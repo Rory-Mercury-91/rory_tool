@@ -33,6 +33,7 @@ from core.file_manager import file_manager, FileOpener, TempFileManager
 from core.coherence_checker import check_file_coherence
 from ui.backup_manager import show_backup_manager
 from ui.interface import SaveModeDialog
+from core.extraction import get_file_base_name
 
 # Imports du tutoriel (avec fallback de sécurité)
 try:
@@ -1298,14 +1299,6 @@ class TraducteurRenPyPro:
             messagebox.showerror("❌ Erreur", f"Erreur lors de la reconstruction:\n{str(e)}")
             self.label_stats.config(text="❌ Erreur lors de la reconstruction")
     
-    def gerer_sauvegardes(self):
-        """Ouvre le gestionnaire de sauvegardes"""
-        try:
-            show_backup_manager(self.root, self.original_path)
-        except Exception as e:
-            log_message("ERREUR", "Erreur lors de l'ouverture du gestionnaire de sauvegardes", e)
-            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le gestionnaire de sauvegardes:\n{str(e)}")
-
     def demander_mode_sauvegarde(self):
         """Demande le mode de sauvegarde à l'utilisateur"""
         # Réutiliser le mode s'il a déjà été choisi
