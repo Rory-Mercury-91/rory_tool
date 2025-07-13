@@ -1,5 +1,6 @@
 dist/
-build/__pycache__/
+build/
+__pycache__/
 *.pyc
 *.log
 *.backup

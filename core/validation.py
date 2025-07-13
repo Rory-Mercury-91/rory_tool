@@ -154,7 +154,7 @@ class BackupManager:
     @staticmethod
     def create_backup(filepath, backup_suffix=".backup"):
         """
-        Crée une sauvegarde du fichier
+        Crée une sauvegarde du fichier dans le dossier sauvegardes
         
         Args:
             filepath (str): Chemin du fichier à sauvegarder
@@ -170,14 +170,20 @@ class BackupManager:
         }
         
         try:
+            from utils.constants import FOLDERS, ensure_folders_exist
+            
             if not os.path.exists(filepath):
                 result['error'] = "Fichier source introuvable"
                 return result
             
-            # Générer un nom de backup unique
+            # S'assurer que le dossier existe
+            ensure_folders_exist()
+            
+            # Générer un nom de backup unique dans le dossier sauvegardes
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            base_name = os.path.splitext(filepath)[0]
-            backup_path = f"{base_name}_{timestamp}{backup_suffix}"
+            base_name = os.path.splitext(os.path.basename(filepath))[0]
+            backup_filename = f"{base_name}_{timestamp}{backup_suffix}"
+            backup_path = os.path.join(FOLDERS["backup"], backup_filename)
             
             # Créer la sauvegarde
             shutil.copy2(filepath, backup_path)
@@ -185,7 +191,7 @@ class BackupManager:
             result['success'] = True
             result['backup_path'] = backup_path
             
-            log_message("INFO", f"Sauvegarde créée: {os.path.basename(backup_path)}")
+            log_message("INFO", f"Sauvegarde créée: {backup_path}")
             
         except Exception as e:
             result['error'] = str(e)

@@ -6,16 +6,20 @@
 Module contenant toutes les constantes de l'application
 """
 
+import os
+
 # Version de l'application
 VERSION = "1.1.0"
 
-# Configuration pour l'envoi de logs
-LOG_ENDPOINT = "https://formspree.io/f/mrbknkvn"
-LOG_EMAIL = "Traduction-Rory-Mercury91@proton.me"
+# Dossiers d'organisation
+FOLDERS = {
+    "temp": "temporaire",
+    "backup": "sauvegardes",
+    "warnings": "avertissements",
+    "logs": "logs"
+}
 
 # Couleurs pour les thèmes
-# utils/constants.py - Section THEMES corrigée
-
 THEMES = {
     "dark": {
         "bg": "#2b2b2b",
@@ -103,14 +107,24 @@ DEFAULT_CONFIG = {
     "last_directory": "",
     "auto_open_files": True,
     "dark_mode": True,
-    "validation_enabled": True,  # NOUVEAU : Validation activée par défaut
+    "validation_enabled": True,
     "version": VERSION
 }
 
-# Noms de fichiers
+# Noms de fichiers avec chemins organisés
 FILE_NAMES = {
     "config": "config.json",
-    "log": "log.txt",
-    "temps": "temps.txt",
+    "log": os.path.join(FOLDERS["logs"], "log.txt"),
+    "temps": "temps.txt",  # Reste à la racine pour facilité d'accès
     "tutorial_flag": "tutorial_shown.flag"
 }
+
+# Fonction utilitaire pour créer les dossiers
+def ensure_folders_exist():
+    """Crée tous les dossiers nécessaires s'ils n'existent pas"""
+    for folder_name, folder_path in FOLDERS.items():
+        try:
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path, exist_ok=True)
+        except Exception:
+            pass  # Échec silencieux

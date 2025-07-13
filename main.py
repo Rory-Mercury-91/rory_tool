@@ -16,6 +16,7 @@ import time
 import json
 import datetime
 import re
+import subprocess  # AJOUTÉ: Import manquant pour _open_folder
 
 # Import Drag & Drop avec fallback
 try:
@@ -27,7 +28,7 @@ except ImportError:
 # Imports des modules de l'application
 from utils.constants import VERSION, THEMES, WINDOW_CONFIG, MESSAGES
 from utils.config import config_manager
-from utils.logging import log_message, log_temps_performance, envoyer_logs_erreurs, anonymize_path
+from utils.logging import log_message, log_temps_performance, anonymize_path
 from core.extraction import TextExtractor
 from core.reconstruction import FileReconstructor
 from core.validation import validate_before_extraction, create_safety_backup, validate_before_reconstruction
@@ -36,6 +37,7 @@ from core.coherence_checker import check_file_coherence
 from ui.backup_manager import show_backup_manager
 from ui.interface import SaveModeDialog
 from core.extraction import get_file_base_name
+from utils.constants import VERSION, THEMES, WINDOW_CONFIG, MESSAGES, FILE_NAMES
 
 # Imports du tutoriel (avec fallback de sécurité)
 try:
@@ -50,73 +52,78 @@ class TraducteurRenPyPro:
     """Classe principale de l'application"""
     
     def __init__(self):
-        # CORRECTION : Nettoyer les fenêtres Tkinter existantes
-        import tkinter as tk
-        if tk._default_root:
+            # CORRECTION : Nettoyer les fenêtres Tkinter existantes
+            import tkinter as tk
+            if tk._default_root:
+                try:
+                    tk._default_root.withdraw()  # Masquer les fenêtres parasites
+                    tk._default_root.quit()
+                    tk._default_root.destroy()
+                except:
+                    pass
+            
+            # NOUVEAU : Créer les dossiers organisés au démarrage
+            from utils.constants import ensure_folders_exist
+            ensure_folders_exist()
+            
+            # NOUVEAU : Créer LA fenêtre principale avec support Drag & Drop
             try:
-                tk._default_root.withdraw()  # Masquer les fenêtres parasites
-                tk._default_root.quit()
-                tk._default_root.destroy()
-            except:
-                pass
-    
-        # NOUVEAU : Créer LA fenêtre principale avec support Drag & Drop
-        try:
-            import tkinterdnd2 as dnd2
-            self.root = dnd2.Tk()  # Fenêtre avec support Drag & Drop
-            self.dnd_available = True
-            log_message("INFO", "Fenêtre créée avec support Drag & Drop")
-        except ImportError:
-            self.root = tk.Tk()  # Fenêtre normale si tkinterdnd2 pas disponible
-            self.dnd_available = False
-            log_message("INFO", "Fenêtre créée sans Drag & Drop (tkinterdnd2 non disponible)")
-    
-        # CORRECTION : Masquer pendant l'initialisation
-        self.root.withdraw()
-    
-        self.setup_window()
-    
-        # État de l'application
-        self.file_content = []
-        self.original_path = None
-        self.extraction_results = None
-        self.last_extraction_time = 0
-        self.last_reconstruction_time = 0
-        self._save_mode = None
-    
-        # Widgets (initialisation à None)
-        self.label_chemin = None
-        self.label_stats = None
-        self.text_area = None
-        self.bouton_auto_open = None
-        self.bouton_validation = None  # NOUVEAU : Référence bouton validation
-        self.bouton_theme = None
-        self.frame_info = None
-        self.title_label = None
-        self.subtitle_label = None
-    
-        # Créer l'interface
-        self.create_interface()
-        self.appliquer_theme()
-        
-        # NOUVEAU : Initialiser l'affichage Drag & Drop APRÈS que text_area existe
-        if hasattr(self, 'text_area') and self.text_area:
-            try:
-                self._update_drag_drop_display()
-                print("✅ DEBUG - Affichage initial Drag & Drop configuré")
-            except Exception as e:
-                print(f"⚠️ DEBUG - Erreur affichage initial D&D: {e}")
-        
-        # CORRECTION : Réafficher la fenêtre une fois prête
-        self.root.deiconify()
-        
-        # Initialisation
-        self.center_window()
-        self.check_tutorial()
-        print(f"DEBUG - file_content au démarrage: {hasattr(self, 'file_content')}")
-        print(f"DEBUG - text_area au démarrage: {hasattr(self, 'text_area')}")
-        
-        log_message("INFO", f"=== DÉMARRAGE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
+                import tkinterdnd2 as dnd2
+                self.root = dnd2.Tk()  # Fenêtre avec support Drag & Drop
+                self.dnd_available = True
+                log_message("INFO", "Fenêtre créée avec support Drag & Drop")
+            except ImportError:
+                self.root = tk.Tk()  # Fenêtre normale si tkinterdnd2 pas disponible
+                self.dnd_available = False
+                log_message("INFO", "Fenêtre créée sans Drag & Drop (tkinterdnd2 non disponible)")
+            
+            # CORRECTION : Masquer pendant l'initialisation
+            self.root.withdraw()
+            
+            self.setup_window()
+            
+            # État de l'application
+            self.file_content = []
+            self.original_path = None
+            self.extraction_results = None
+            self.last_extraction_time = 0
+            self.last_reconstruction_time = 0
+            self._save_mode = None
+            
+            # Widgets (initialisation à None)
+            self.label_chemin = None
+            self.label_stats = None
+            self.text_area = None
+            self.bouton_auto_open = None
+            self.bouton_validation = None  # NOUVEAU : Référence bouton validation
+            self.bouton_theme = None
+            self.frame_info = None
+            self.title_label = None
+            self.subtitle_label = None
+            
+            # Créer l'interface
+            self.create_interface()
+            self.appliquer_theme()
+            
+            # NOUVEAU : Initialiser l'affichage Drag & Drop APRÈS que text_area existe
+            if hasattr(self, 'text_area') and self.text_area:
+                try:
+                    self._update_drag_drop_display()
+                    print("✅ DEBUG - Affichage initial Drag & Drop configuré")
+                except Exception as e:
+                    print(f"⚠️ DEBUG - Erreur affichage initial D&D: {e}")
+            
+            # CORRECTION : Réafficher la fenêtre une fois prête
+            self.root.deiconify()
+            
+            # Initialisation
+            self.center_window()
+            self.check_tutorial()
+            print(f"DEBUG - file_content au démarrage: {hasattr(self, 'file_content')}")
+            print(f"DEBUG - text_area au démarrage: {hasattr(self, 'text_area')}")
+            
+            log_message("INFO", f"=== DÉMARRAGE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
+            log_message("INFO", "Dossiers organisés créés: temporaire, sauvegardes, avertissements, logs")
     
     def setup_window(self):
         """Configure la fenêtre principale"""
@@ -134,26 +141,20 @@ class TraducteurRenPyPro:
         self.root.protocol("WM_DELETE_WINDOW", self.fermer_application)
     
     def fermer_application(self):
-        """Gestion de la fermeture propre de l'application"""
-        try:
-            log_message("INFO", f"=== FERMETURE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
-            
-            # Proposer l'envoi des logs d'erreurs s'il y en a eu
+            """Gestion de la fermeture propre de l'application"""
             try:
-                envoyer_logs_erreurs()
-            except:
-                pass
-            
-            # Nettoyer les fichiers temporaires
-            try:
-                TempFileManager.cleanup_temp_files()
-            except:
-                pass
-            
-            self.root.destroy()
-        except Exception as e:
-            print(f"Erreur lors de la fermeture: {e}")
-            self.root.destroy()
+                log_message("INFO", f"=== FERMETURE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
+                
+                # Nettoyer les fichiers temporaires
+                try:
+                    TempFileManager.cleanup_temp_files()
+                except:
+                    pass
+                
+                self.root.destroy()
+            except Exception as e:
+                print(f"Erreur lors de la fermeture: {e}")
+                self.root.destroy()
     
     # =============================================================================
     # MÉTHODES DE BASCULEMENT DE THÈME
@@ -368,99 +369,88 @@ class TraducteurRenPyPro:
         btn_reinit.grid(row=0, column=3, sticky="nsew", padx=5, pady=8)
     
     def create_actions_frame(self):
-        """Crée le frame des actions principales"""
-        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
-        
-        frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
-        frame_actions.pack(padx=20, pady=5)
-        
-        # 8 colonnes : 2 boutons verts, 1 séparateur, 5 utilitaires (validation ajoutée)
-        frame_actions.columnconfigure(0, weight=1, uniform="grp_act")
-        frame_actions.columnconfigure(1, weight=1, uniform="grp_act")
-        frame_actions.columnconfigure(2, weight=0)  # séparateur
-        for col in range(3, 8):  # 5 boutons utilitaires
-            frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
-        
-        # Boutons verts (col 0, 1 & 2 maintenant)
-        btn_extraire = tk.Button(
-            frame_actions,
-            text="⚡ Extraire",
-            font=('Segoe UI', 11),
-            bg='#28a745',
-            fg='#000000',
-            activebackground='#1e7e34',
-            bd=1,
-            relief='solid',
-            command=self.extraire_textes
-        )
-        btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
-
-        # NOUVEAU BOUTON
-        btn_extract_todo = tk.Button(
-            frame_actions,
-            text="⚡ TODO",
-            font=('Segoe UI', 11),
-            bg='#ff8c00',  # Orange pour le distinguer
-            fg='#000000',
-            activebackground='#e07b00',
-            bd=1,
-            relief='solid',
-            command=self.extraire_textes_avec_selector
-        )
-        btn_extract_todo.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
-
-        btn_reconstruire = tk.Button(
-            frame_actions,
-            text="🔧 Reconstruire",
-            font=('Segoe UI', 11),
-            bg='#28a745',
-            fg='#000000',
-            activebackground='#1e7e34',
-            bd=1,
-            relief='solid',
-            command=self.reconstruire_fichier
-        )
-        btn_reconstruire.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)  # ← Maintenant colonne 2
-
-        # Séparateur visuel (col 3 maintenant)
-        separateur = tk.Frame(frame_actions, bg=theme["fg"], width=2)
-        separateur.grid(row=0, column=3, sticky="ns", padx=10, pady=10)
-
-        # Utilitaires (col 4 à 8 maintenant)
-        # ... reste identique mais décaler les colonnes de +1
-        
-        # Utilitaires (col 3 à 7) - AVEC le bouton validation
-        utilitaires = [
-            ("🧹 Nettoyer",     self.nettoyer_page, '#ffc107'),
-            ("⏱️ Temps",        self.ouvrir_log_temps, '#ffc107'),  # "Voir Temps" → "Temps"
-            (
-                f"📂 Auto: {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}",  # "Auto-ouverture" → "Auto"
-                self.toggle_auto_open, '#ffc107'
-            ),
-            (
-                f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}",  # "Validation" → "Valid"
-                self.toggle_validation, '#ffc107'
-            ),
-            ("🎓 Tutoriel",    lambda: show_tutorial(), '#ffc107')
-        ]
-        
-        for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
-            btn = tk.Button(
+            """Crée le frame des actions principales"""
+            theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+            
+            frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
+            frame_actions.pack(padx=20, pady=5)
+            
+            # 8 colonnes : 3 boutons verts + 5 utilitaires (AVEC le bouton Avertissements, SANS séparateur)
+            for col in range(8):
+                frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
+            
+            # Boutons verts principaux
+            btn_extraire = tk.Button(
                 frame_actions,
-                text=txt,
-                font=('Segoe UI', 10),
-                bg=couleur,
+                text="⚡ Extraire",
+                font=('Segoe UI', 11),
+                bg='#28a745',
                 fg='#000000',
-                activebackground='#e0a800',
+                activebackground='#1e7e34',
                 bd=1,
                 relief='solid',
-                command=cmd
+                command=self.extraire_textes
             )
-            btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
-            if cmd == self.toggle_auto_open:
-                self.bouton_auto_open = btn
-            elif cmd == self.toggle_validation:
-                self.bouton_validation = btn
+            btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
+
+            btn_extract_todo = tk.Button(
+                frame_actions,
+                text="⚡ TODO",
+                font=('Segoe UI', 11),
+                bg='#ff8c00',
+                fg='#000000',
+                activebackground='#e07b00',
+                bd=1,
+                relief='solid',
+                command=self.extraire_textes_avec_selector
+            )
+            btn_extract_todo.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
+
+            btn_reconstruire = tk.Button(
+                frame_actions,
+                text="🔧 Reconstruire",
+                font=('Segoe UI', 11),
+                bg='#28a745',
+                fg='#000000',
+                activebackground='#1e7e34',
+                bd=1,
+                relief='solid',
+                command=self.reconstruire_fichier
+            )
+            btn_reconstruire.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
+
+            # Utilitaires (colonnes 3 à 7) - AVEC le bouton Avertissements
+            utilitaires = [
+                ("🧹 Nettoyer",     self.nettoyer_page, '#ffc107'),
+                ("⏱️ Temps",        self.ouvrir_log_temps, '#ffc107'),
+                ("⚠️ Avertissements", self.ouvrir_avertissements, '#dc3545'),  # Bouton rouge
+                (
+                    f"📂 Auto: {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}",
+                    self.toggle_auto_open, '#ffc107'
+                ),
+                (
+                    f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}",
+                    self.toggle_validation, '#ffc107'
+                )
+            ]
+            
+            for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
+                btn = tk.Button(
+                    frame_actions,
+                    text=txt,
+                    font=('Segoe UI', 10),
+                    bg=couleur,
+                    fg='#000000',
+                    activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37',
+                    bd=1,
+                    relief='solid',
+                    command=cmd
+                )
+                btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
+                if cmd == self.toggle_auto_open:
+                    self.bouton_auto_open = btn
+                elif cmd == self.toggle_validation:
+                    self.bouton_validation = btn
     
     def create_content_frame(self):
         """Crée la zone de contenu principal avec support Drag & Drop"""
@@ -1333,63 +1323,440 @@ class TraducteurRenPyPro:
             messagebox.showerror("❌ Erreur", f"Erreur pendant l'extraction:\n{str(e)}")
     
     def reconstruire_fichier(self):
-        """Reconstruit le fichier avec les traductions"""
-        if not self.file_content or not self.original_path:
-            messagebox.showerror("❌ Erreur", MESSAGES["no_file_loaded"])
-            return
-        
-        try:
-            # ... code de validation existant ...
+            """Reconstruit le fichier avec les traductions"""
+            if not self.file_content or not self.original_path:
+                messagebox.showerror("❌ Erreur", MESSAGES["no_file_loaded"])
+                return
             
-            # Demander le mode de sauvegarde
-            if not self._save_mode:
-                save_dialog = SaveModeDialog(self.root)
-                self._save_mode = save_dialog.show()
+            try:
+                # Vérifier que les fichiers d'extraction existent
+                file_base = get_file_base_name(self.original_path)
                 
-                if not self._save_mode:
+                if not self.extraction_results:
+                    messagebox.showerror("❌ Erreur", "Effectuez d'abord l'extraction du fichier")
                     return
-            
-            # Reconstruction
-            from core.reconstruction import reconstruire_fichier as reconstruct_func
-            
-            self.label_stats.config(text="🔧 Reconstruction en cours...")
-            self.root.update()
-            
-            start_time = time.time()
-            result = reconstruct_func(self.file_content, self.original_path, self._save_mode)
-            reconstruction_time = time.time() - start_time
-            
-            if result:
-                # NOUVEAU : Contrôle de cohérence si validation activée
+                
+                # Validation si activée
                 if config_manager.is_validation_enabled():
-                    coherence_result = check_file_coherence(result['save_path'])
+                    # Utiliser les compteurs sauvegardés
+                    extracted_count = self.extraction_results.get('extracted_count', 0)
+                    asterix_count = self.extraction_results.get('asterix_count', 0)
+                    empty_count = self.extraction_results.get('empty_count', 0)
                     
-                    if coherence_result['issues_found'] > 0:
-                        messagebox.showwarning(
-                            "⚠️ Problèmes de cohérence détectés",
-                            f"{coherence_result['issues_found']} problème(s) détecté(s) dans la traduction.\n\n"
-                            f"Un fichier d'avertissement a été créé :\n{coherence_result.get('warning_file', 'avertissement.txt')}\n\n"
-                            f"Voulez-vous consulter les détails ?"
-                        )
+                    validation_result = validate_before_reconstruction(
+                        file_base, extracted_count, asterix_count, empty_count
+                    )
+                    
+                    if not validation_result['overall_valid']:
+                        errors = []
+                        if validation_result['main_file'] and not validation_result['main_file']['valid']:
+                            errors.extend(validation_result['main_file'].get('errors', []))
                         
-                        if coherence_result.get('warning_file'):
-                            try:
-                                import subprocess
-                                subprocess.run(['notepad.exe', coherence_result['warning_file']], check=False)
-                            except:
-                                pass
+                        error_message = "Validation échouée:\n\n" + "\n".join(f"• {error}" for error in errors[:3])
+                        if len(errors) > 3:
+                            error_message += f"\n... et {len(errors) - 3} autres erreurs"
+                        
+                        result = messagebox.askyesno("⚠️ Validation échouée", error_message + "\n\nContinuer quand même ?")
+                        if not result:
+                            return
                 
-                # Messages de succès habituels...
-                success_msg = MESSAGES["reconstruction_success"].format(time=reconstruction_time)
-                self.label_stats.config(text=success_msg)
+                # Demander le mode de sauvegarde
+                if not self._save_mode:
+                    save_dialog = SaveModeDialog(self.root)
+                    self._save_mode = save_dialog.show()
+                    
+                    if not self._save_mode:
+                        return
                 
-                # ... reste du code existant ...
+                # Reconstruction
+                from core.reconstruction import reconstruire_fichier as reconstruct_func
+                
+                self.label_stats.config(text="🔧 Reconstruction en cours...")
+                self.root.update()
+                
+                start_time = time.time()
+                result = reconstruct_func(self.file_content, self.original_path, self._save_mode)
+                self.last_reconstruction_time = time.time() - start_time
+                
+                if result:
+                    # NOUVEAU : Contrôle de cohérence si validation activée
+                    if config_manager.is_validation_enabled():
+                        coherence_result = check_file_coherence(result['save_path'])
+                        
+                        if coherence_result['issues_found'] > 0:
+                            # NOUVEAU : Affichage non-bloquant avec possibilité d'ouvrir
+                            response = messagebox.askyesnocancel(
+                                "⚠️ Problèmes de cohérence détectés",
+                                f"{coherence_result['issues_found']} problème(s) détecté(s) dans la traduction.\n\n"
+                                f"Un fichier d'avertissement a été créé dans le dossier 'avertissements'.\n\n"
+                                f"• Oui = Ouvrir le fichier d'avertissement maintenant\n"
+                                f"• Non = Continuer sans ouvrir\n"
+                                f"• Annuler = Voir les détails ici"
+                            )
+                            
+                            if response is True:  # Oui - Ouvrir le fichier
+                                try:
+                                    if coherence_result.get('warning_file'):
+                                        FileOpener.open_files([coherence_result['warning_file']], True)
+                                except Exception as e:
+                                    log_message("WARNING", f"Impossible d'ouvrir le fichier d'avertissement", e)
+                            
+                            elif response is None:  # Annuler - Afficher dans une fenêtre
+                                self._show_coherence_issues(coherence_result['issues'])
+                            
+                            # Si Non, on continue simplement sans rien faire
+                    
+                    # AJOUT : Log des temps de performance
+                    if hasattr(self, 'last_extractor') and self.last_extractor:
+                        try:
+                            log_temps_performance(
+                                self.original_path,
+                                self.last_extraction_time,
+                                self.last_reconstruction_time,
+                                self.last_extractor.extracted_count,
+                                self.last_extractor.asterix_count,
+                                self.last_extractor.empty_count
+                            )
+                        except Exception as log_error:
+                            log_message("WARNING", "Impossible d'enregistrer les temps", log_error)
+                    
+                    # Messages de succès
+                    success_msg = MESSAGES["reconstruction_success"].format(time=self.last_reconstruction_time)
+                    self.label_stats.config(text=f"✅ Reconstruction terminée | ⏱️ {self.last_reconstruction_time:.2f}s")
+                    
+                    # Ouvrir le fichier reconstruit si demandé
+                    try:
+                        FileOpener.open_files([result['save_path']], config_manager.is_auto_open_enabled())
+                    except:
+                        pass
+                    
+                    # Proposer de passer au fichier suivant en mode dossier
+                    if file_manager.is_folder_mode:
+                        self.handle_next_file()
+                    else:
+                        messagebox.showinfo("🎉 Reconstruction terminée", 
+                            f"✅ Fichier traduit créé avec succès !\n\n"
+                            f"📁 Fichier: {os.path.basename(result['save_path'])}\n"
+                            f"⏱️ Temps: {self.last_reconstruction_time:.2f}s")
+                else:
+                    self.label_stats.config(text="❌ Erreur lors de la reconstruction")
+                    messagebox.showerror("❌ Erreur", "Erreur lors de la reconstruction")
+                    
+            except Exception as e:
+                log_message("ERREUR", "Erreur lors de la reconstruction", e)
+                messagebox.showerror("❌ Erreur", f"Erreur lors de la reconstruction:\n{str(e)}")
+                self.label_stats.config(text="❌ Erreur lors de la reconstruction")
+
+    def ouvrir_avertissements(self):
+            """Ouvre le dossier avertissements ou affiche les fichiers disponibles"""
+            from utils.constants import FOLDERS
+            import glob
+            
+            warnings_folder = FOLDERS["warnings"]
+            
+            try:
+                # Vérifier si le dossier existe et contient des fichiers
+                if not os.path.exists(warnings_folder):
+                    messagebox.showinfo(
+                        "📁 Dossier avertissements",
+                        f"Le dossier '{warnings_folder}' n'existe pas encore.\n\n"
+                        f"Il sera créé automatiquement lors de la première validation\n"
+                        f"qui détecte des problèmes de cohérence."
+                    )
+                    return
+                
+                # Chercher les fichiers d'avertissement
+                warning_files = glob.glob(os.path.join(warnings_folder, "*_avertissement.txt"))
+                
+                if not warning_files:
+                    result = messagebox.askyesno(
+                        "📁 Aucun avertissement",
+                        f"Le dossier '{warnings_folder}' est vide.\n\n"
+                        f"Aucun fichier d'avertissement trouvé.\n\n"
+                        f"Voulez-vous ouvrir le dossier quand même ?"
+                    )
+                    if result:
+                        self._open_folder(warnings_folder)
+                    return
+                
+                # S'il y a un seul fichier, le proposer directement
+                if len(warning_files) == 1:
+                    file_name = os.path.basename(warning_files[0])
+                    result = messagebox.askyesnocancel(
+                        "📄 Fichier d'avertissement trouvé",
+                        f"Un fichier d'avertissement trouvé :\n{file_name}\n\n"
+                        f"• Oui = Ouvrir ce fichier\n"
+                        f"• Non = Ouvrir le dossier\n"
+                        f"• Annuler = Fermer"
+                    )
+                    
+                    if result is True:  # Ouvrir le fichier
+                        FileOpener.open_files([warning_files[0]], True)
+                    elif result is False:  # Ouvrir le dossier
+                        self._open_folder(warnings_folder)
+                
+                # S'il y a plusieurs fichiers, afficher la liste
+                else:
+                    self._show_warning_files_list(warning_files, warnings_folder)
+                    
+            except Exception as e:
+                log_message("ERREUR", f"Erreur ouverture dossier avertissements", e)
+                messagebox.showerror("❌ Erreur", f"Impossible d'accéder aux avertissements:\n{str(e)}")
+        
+    def _open_folder(self, folder_path):
+        """Ouvre un dossier avec l'explorateur de fichiers"""
+        try:
+            if os.name == 'nt':  # Windows
+                os.startfile(folder_path)
+            elif sys.platform == 'darwin':  # macOS
+                subprocess.call(['open', folder_path])
+            else:  # Linux
+                subprocess.call(['xdg-open', folder_path])
+        except Exception as e:
+            log_message("WARNING", f"Impossible d'ouvrir le dossier {folder_path}", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le dossier:\n{str(e)}")
+    
+    def _show_warning_files_list(self, warning_files, warnings_folder):
+        """Affiche la liste des fichiers d'avertissement disponibles"""
+        try:
+            # Créer une fenêtre pour la liste
+            list_window = tk.Toplevel(self.root)
+            list_window.title("📄 Fichiers d'avertissement disponibles")
+            list_window.geometry("600x400")
+            
+            # Centrer la fenêtre
+            list_window.update_idletasks()
+            x = (list_window.winfo_screenwidth() // 2) - (list_window.winfo_width() // 2)
+            y = (list_window.winfo_screenheight() // 2) - (list_window.winfo_height() // 2)
+            list_window.geometry(f"+{x}+{y}")
+            
+            # Appliquer le thème
+            theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+            list_window.configure(bg=theme["bg"])
+            
+            # En-tête
+            header_frame = tk.Frame(list_window, bg=theme["bg"])
+            header_frame.pack(fill='x', padx=10, pady=10)
+            
+            title_label = tk.Label(
+                header_frame,
+                text=f"📄 {len(warning_files)} fichier(s) d'avertissement trouvé(s)",
+                font=('Segoe UI', 14, 'bold'),
+                bg=theme["bg"],
+                fg=theme["fg"]
+            )
+            title_label.pack()
+            
+            # Liste
+            list_frame = tk.Frame(list_window, bg=theme["bg"])
+            list_frame.pack(fill='both', expand=True, padx=10, pady=5)
+            
+            # Listbox avec scrollbar
+            listbox_frame = tk.Frame(list_frame, bg=theme["bg"])
+            listbox_frame.pack(fill='both', expand=True)
+            
+            listbox = tk.Listbox(
+                listbox_frame,
+                font=('Segoe UI', 10),
+                bg=theme["entry_bg"],
+                fg=theme["entry_fg"],
+                selectbackground=theme["select_bg"],
+                selectforeground=theme["select_fg"]
+            )
+            
+            scrollbar_list = tk.Scrollbar(listbox_frame, orient="vertical", command=listbox.yview)
+            listbox.configure(yscrollcommand=scrollbar_list.set)
+            
+            listbox.pack(side="left", fill="both", expand=True)
+            scrollbar_list.pack(side="right", fill="y")
+            
+            # Remplir la liste
+            for warning_file in warning_files:
+                file_name = os.path.basename(warning_file)
+                # Enlever le suffixe _avertissement.txt pour plus de clarté
+                display_name = file_name.replace("_avertissement.txt", "")
+                listbox.insert(tk.END, display_name)
+            
+            # Sélectionner le premier par défaut
+            if warning_files:
+                listbox.selection_set(0)
+            
+            # Boutons
+            button_frame = tk.Frame(list_window, bg=theme["bg"])
+            button_frame.pack(fill='x', padx=10, pady=10)
+            
+            def open_selected():
+                selection = listbox.curselection()
+                if selection:
+                    selected_file = warning_files[selection[0]]
+                    FileOpener.open_files([selected_file], True)
+                    list_window.destroy()
+            
+            def open_folder():
+                self._open_folder(warnings_folder)
+                list_window.destroy()
+            
+            btn_open_file = tk.Button(
+                button_frame,
+                text="📄 Ouvrir le fichier sélectionné",
+                font=('Segoe UI', 10),
+                bg=theme["accent"],
+                fg=theme["button_fg"],
+                command=open_selected
+            )
+            btn_open_file.pack(side='left')
+            
+            btn_open_folder = tk.Button(
+                button_frame,
+                text="📁 Ouvrir le dossier",
+                font=('Segoe UI', 10),
+                bg=theme["warning"],
+                fg='#000000',
+                command=open_folder
+            )
+            btn_open_folder.pack(side='left', padx=(10, 0))
+            
+            btn_close = tk.Button(
+                button_frame,
+                text="❌ Fermer",
+                font=('Segoe UI', 10),
+                bg=theme["danger"],
+                fg=theme["button_fg"],
+                command=list_window.destroy
+            )
+            btn_close.pack(side='right')
+            
+            # Double-clic pour ouvrir
+            listbox.bind('<Double-Button-1>', lambda e: open_selected())
             
         except Exception as e:
-            log_message("ERREUR", "Erreur lors de la reconstruction", e)
-            messagebox.showerror("❌ Erreur", f"Erreur lors de la reconstruction:\n{str(e)}")
-            self.label_stats.config(text="❌ Erreur lors de la reconstruction")
-    
+            log_message("ERREUR", f"Erreur affichage liste avertissements", e)
+
+    def _show_coherence_issues(self, issues):
+            """Affiche les problèmes de cohérence dans une fenêtre non-bloquante"""
+            try:
+                # Créer une fenêtre pour afficher les problèmes
+                issues_window = tk.Toplevel(self.root)
+                issues_window.title("⚠️ Problèmes de cohérence détectés")
+                issues_window.geometry("900x700")
+                # NE PAS utiliser transient ou grab_set pour éviter le blocage
+                
+                # Centrer la fenêtre
+                issues_window.update_idletasks()
+                x = (issues_window.winfo_screenwidth() // 2) - (issues_window.winfo_width() // 2)
+                y = (issues_window.winfo_screenheight() // 2) - (issues_window.winfo_height() // 2)
+                issues_window.geometry(f"+{x}+{y}")
+                
+                # Appliquer le thème
+                theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+                issues_window.configure(bg=theme["bg"])
+                
+                # En-tête
+                header_frame = tk.Frame(issues_window, bg=theme["bg"])
+                header_frame.pack(fill='x', padx=10, pady=10)
+                
+                title_label = tk.Label(
+                    header_frame,
+                    text="⚠️ Problèmes de cohérence détectés",
+                    font=('Segoe UI', 16, 'bold'),
+                    bg=theme["bg"],
+                    fg=theme["danger"]
+                )
+                title_label.pack()
+                
+                count_label = tk.Label(
+                    header_frame,
+                    text=f"{len(issues)} problème(s) trouvé(s) dans la traduction",
+                    font=('Segoe UI', 12),
+                    bg=theme["bg"],
+                    fg=theme["fg"]
+                )
+                count_label.pack(pady=(5, 0))
+                
+                # Zone de texte avec scrollbar
+                text_frame = tk.Frame(issues_window, bg=theme["bg"])
+                text_frame.pack(fill='both', expand=True, padx=10, pady=5)
+                
+                text_area = ScrolledText(
+                    text_frame,
+                    font=('Courier New', 10),
+                    wrap=tk.WORD,
+                    bg=theme["entry_bg"],
+                    fg=theme["entry_fg"],
+                    selectbackground=theme["select_bg"],
+                    selectforeground=theme["select_fg"]
+                )
+                text_area.pack(fill='both', expand=True)
+                
+                # Formater et insérer les problèmes
+                content = ""
+                issues_by_type = {}
+                for issue in issues:
+                    issue_type = issue['type']
+                    if issue_type not in issues_by_type:
+                        issues_by_type[issue_type] = []
+                    issues_by_type[issue_type].append(issue)
+                
+                for issue_type, type_issues in issues_by_type.items():
+                    content += f"🔸 {self._get_issue_type_name(issue_type)}\n"
+                    content += "-" * 50 + "\n"
+                    
+                    for issue in type_issues:
+                        content += f"Ligne {issue['line']}: {issue['description']}\n"
+                        if issue.get('old_line'):
+                            content += f"  OLD (ligne {issue['old_line']}): {issue.get('old_content', 'N/A')}\n"
+                        if issue.get('new_content'):
+                            content += f"  NEW: {issue['new_content']}\n"
+                        content += "\n"
+                    
+                    content += "\n"
+                
+                text_area.insert('1.0', content)
+                text_area.configure(state='disabled')  # Lecture seule
+                
+                # Boutons
+                button_frame = tk.Frame(issues_window, bg=theme["bg"])
+                button_frame.pack(fill='x', padx=10, pady=10)
+                
+                info_label = tk.Label(
+                    button_frame,
+                    text="💡 Ces problèmes peuvent causer des erreurs dans le jeu",
+                    font=('Segoe UI', 9),
+                    bg=theme["bg"],
+                    fg=theme["fg"]
+                )
+                info_label.pack(side='left')
+                
+                btn_close = tk.Button(
+                    button_frame,
+                    text="✅ Compris",
+                    font=('Segoe UI', 10),
+                    bg=theme["accent"],
+                    fg=theme["button_fg"],
+                    command=issues_window.destroy
+                )
+                btn_close.pack(side='right')
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur affichage problèmes cohérence", e)
+        
+    def _get_issue_type_name(self, issue_type):
+        """Retourne le nom lisible d'un type de problème"""
+        names = {
+            'TAG_MISMATCH': 'Balises {} incohérentes',
+            'VARIABLE_MISMATCH': 'Variables [] incohérentes', 
+            'PLACEHOLDER_MISMATCH': 'Placeholders () incohérents',
+            'MALFORMED_PLACEHOLDER': 'Placeholders malformés',
+            'ORPHAN_TAG': 'Balises orphelines',
+            'SPECIAL_CODE_MISMATCH': 'Codes spéciaux incohérents',
+            'QUOTE_COUNT_MISMATCH': 'Nombre de guillemets différent',
+            'MISSING_OLD': 'Ligne OLD manquante',
+            'FILE_ERROR': 'Erreur de fichier',
+            'SYSTEM_ERROR': 'Erreur système',
+            'ANALYSIS_ERROR': 'Erreur d\'analyse'
+        }
+        return names.get(issue_type, issue_type)
+
     def demander_mode_sauvegarde(self):
         """Demande le mode de sauvegarde à l'utilisateur"""
         # Réutiliser le mode s'il a déjà été choisi
@@ -1576,23 +1943,42 @@ class TraducteurRenPyPro:
         messagebox.showinfo("🧹 Nettoyage", "Page nettoyée.")
     
     def ouvrir_log_temps(self):
-        """Ouvre le fichier temps.txt s'il existe"""
-        if os.path.exists('temps.txt'):
-            try:
-                FileOpener.open_files(['temps.txt'])
-            except Exception as e:
-                messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir temps.txt:\n{str(e)}")
-        else:
-            messagebox.showinfo("📊 Log des temps", "Aucun fichier temps.txt trouvé.\nTraitez d'abord un fichier pour générer l'historique.")
-    
+            """Ouvre le fichier temps.txt s'il existe"""
+            if os.path.exists('temps.txt'):
+                try:
+                    FileOpener.open_files(['temps.txt'])
+                except Exception as e:
+                    messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir temps.txt:\n{str(e)}")
+            else:
+                messagebox.showinfo("📊 Log des temps", "Aucun fichier temps.txt trouvé.\nTraitez d'abord un fichier pour générer l'historique.")
+            
+    def _refresh_temps_content(self, text_area, temps_file):
+        """Actualise le contenu du fichier temps affiché"""
+        try:
+            with open(temps_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            text_area.configure(state='normal')
+            text_area.delete('1.0', tk.END)
+            
+            if content.strip():
+                text_area.insert('1.0', content)
+            else:
+                text_area.insert('1.0', "Le fichier temps.txt est vide.\n\nTraitez des fichiers pour voir l'historique apparaître ici.")
+            
+            text_area.configure(state='disabled')
+            
+        except Exception as e:
+            messagebox.showerror("❌ Erreur", f"Impossible d'actualiser {temps_file}:\n{str(e)}")
+
     def update_window_title(self, remaining_files=None):
-        """Met à jour le titre de la fenêtre"""
-        base_title = WINDOW_CONFIG["title"]
-        
-        if file_manager.is_folder_mode and remaining_files is not None:
-            self.root.title(f"{base_title} - Mode Dossier ({remaining_files} fichiers restants)")
-        else:
-            self.root.title(base_title)
+            """Met à jour le titre de la fenêtre"""
+            base_title = WINDOW_CONFIG["title"]
+            
+            if file_manager.is_folder_mode and remaining_files is not None:
+                self.root.title(f"{base_title} - Mode Dossier ({remaining_files} fichiers restants)")
+            else:
+                self.root.title(base_title)
     
     def run(self):
         """Lance l'application"""

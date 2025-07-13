@@ -104,59 +104,62 @@ class FileReconstructor:
             raise
     
     def _load_mapping_files(self):
-        """Charge tous les fichiers de mapping"""
-        file_base = get_file_base_name(self.original_path)
-        
-        # Vérifier que les fichiers existent
-        mapping_file = f"{file_base}_mapping.txt"
-        positions_file = f"{file_base}_positions.json"
-        
-        if not os.path.exists(mapping_file) or not os.path.exists(positions_file):
-            raise FileNotFoundError(
-                f"Fichiers manquants:\n• {mapping_file}\n• {positions_file}\n\n"
-                f"Assurez-vous d'avoir extrait le texte de ce fichier d'abord."
-            )
-        
-        # Charger le mapping principal
-        with open(mapping_file, "r", encoding="utf-8") as mf:
-            for line in mf:
-                if " => " in line:
-                    placeholder, tag = line.strip().split(" => ", 1)
-                    self.mapping[placeholder] = tag
-        
-        # Charger le mapping des astérisques (si existe)
-        asterix_mapping_file = f"{file_base}_asterix_mapping.txt"
-        if os.path.exists(asterix_mapping_file):
-            with open(asterix_mapping_file, "r", encoding="utf-8") as amf:
-                for line in amf:
+            """Charge tous les fichiers de mapping depuis le dossier temporaire"""
+            from utils.constants import FOLDERS
+            
+            file_base = get_file_base_name(self.original_path)
+            temp_folder = FOLDERS["temp"]
+            
+            # Vérifier que les fichiers existent dans le dossier temporaire
+            mapping_file = os.path.join(temp_folder, f"{file_base}_mapping.txt")
+            positions_file = os.path.join(temp_folder, f"{file_base}_positions.json")
+            
+            if not os.path.exists(mapping_file) or not os.path.exists(positions_file):
+                raise FileNotFoundError(
+                    f"Fichiers manquants dans {temp_folder}:\n• {os.path.basename(mapping_file)}\n• {os.path.basename(positions_file)}\n\n"
+                    f"Assurez-vous d'avoir extrait le texte de ce fichier d'abord."
+                )
+            
+            # Charger le mapping principal
+            with open(mapping_file, "r", encoding="utf-8") as mf:
+                for line in mf:
                     if " => " in line:
-                        placeholder, asterix = line.strip().split(" => ", 1)
-                        self.asterix_mapping[placeholder] = asterix
-        
-        # Charger le mapping des textes vides (si existe)
-        empty_mapping_file = f"{file_base}_empty_mapping.txt"
-        if os.path.exists(empty_mapping_file):
-            with open(empty_mapping_file, "r", encoding="utf-8") as emf:
-                for line in emf:
-                    if " => " in line:
-                        placeholder, empty = line.strip().split(" => ", 1)
-                        self.empty_mapping[placeholder] = empty
-        
-        # Charger les positions et données
-        with open(positions_file, "r", encoding="utf-8") as pf:
-            position_data = json.load(pf)
-        
-        # Gérer l'ancien format (rétrocompatibilité)
-        if isinstance(position_data, list):
-            self.positions = position_data
-            self.quote_counts = [1] * len(self.positions)
-            self.suffixes = [""] * len(self.positions)
-        else:
-            self.positions = position_data['positions']
-            self.quote_counts = position_data['quote_counts']
-            self.suffixes = position_data.get('suffixes', [""] * len(self.positions))
-        
-        log_message("INFO", f"Mappings chargés: {len(self.mapping)} codes, {len(self.asterix_mapping)} astérisques, {len(self.empty_mapping)} vides")
+                        placeholder, tag = line.strip().split(" => ", 1)
+                        self.mapping[placeholder] = tag
+            
+            # Charger le mapping des astérisques (si existe)
+            asterix_mapping_file = os.path.join(temp_folder, f"{file_base}_asterix_mapping.txt")
+            if os.path.exists(asterix_mapping_file):
+                with open(asterix_mapping_file, "r", encoding="utf-8") as amf:
+                    for line in amf:
+                        if " => " in line:
+                            placeholder, asterix = line.strip().split(" => ", 1)
+                            self.asterix_mapping[placeholder] = asterix
+            
+            # Charger le mapping des textes vides (si existe)
+            empty_mapping_file = os.path.join(temp_folder, f"{file_base}_empty_mapping.txt")
+            if os.path.exists(empty_mapping_file):
+                with open(empty_mapping_file, "r", encoding="utf-8") as emf:
+                    for line in emf:
+                        if " => " in line:
+                            placeholder, empty = line.strip().split(" => ", 1)
+                            self.empty_mapping[placeholder] = empty
+            
+            # Charger les positions et données
+            with open(positions_file, "r", encoding="utf-8") as pf:
+                position_data = json.load(pf)
+            
+            # Gérer l'ancien format (rétrocompatibilité)
+            if isinstance(position_data, list):
+                self.positions = position_data
+                self.quote_counts = [1] * len(self.positions)
+                self.suffixes = [""] * len(self.positions)
+            else:
+                self.positions = position_data['positions']
+                self.quote_counts = position_data['quote_counts']
+                self.suffixes = position_data.get('suffixes', [""] * len(self.positions))
+            
+            log_message("INFO", f"Mappings chargés depuis {temp_folder}: {len(self.mapping)} codes, {len(self.asterix_mapping)} astérisques, {len(self.empty_mapping)} vides")
     
     def _load_translation_files(self):
         """Charge tous les fichiers de traduction"""

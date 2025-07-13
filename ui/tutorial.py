@@ -53,7 +53,7 @@ def show_tutorial():
     
     tutorial_window = tk.Toplevel(root)
     tutorial_window.title(f"🎓 Tutoriel - Traducteur Ren'Py Pro v{VERSION}")
-    tutorial_window.geometry("650x600")  # RÉDUIT : 650x600 au lieu de 750x750
+    tutorial_window.geometry("600x500")
     tutorial_window.resizable(True, True)
     
     if not temporary_root:
@@ -119,47 +119,35 @@ def show_tutorial():
     )
     subtitle_tutorial.pack(pady=(5, 0))
     
-    # Section 1: Interface (CORRIGÉE)
-    create_section(scrollable_frame, theme, "🎨 Interface", [
-        "📂  Boutons bleus : Ouvrir un fichier .rpy ou un dossier",  # Ajout d'un espace après emoji
-        "🛡️  Boutons rouges : Gérer les sauvegardes et réinitialiser",
-        "⚡  Boutons verts : Extraire les textes et reconstruire le fichier", 
-        "🛠️  Boutons jaunes : Nettoyer, voir les temps, options et tutoriel"
+    # Section 1: Boutons principaux
+    create_section(scrollable_frame, theme, "🎯 Les boutons", [
+        "📂  Boutons bleus : Ouvrir un fichier .rpy ou un dossier entier",
+        "⚡  Boutons verts : Extraire les textes puis Reconstruire le fichier traduit",
+        "🛡️  Bouton rouge : Gérer les sauvegardes automatiques"
     ])
 
-    # Section 2: Processus de traduction (CORRIGÉE - sans carrés)
-    create_section(scrollable_frame, theme, "🚀 Comment traduire", [
-        "1. Ouvrez votre fichier .rpy avec le bouton bleu",  # SUPPRIMÉ les carrés ☐
-        "2. Cliquez sur 'Extraire' (vert) pour créer les fichiers de traduction",
-        "3. Traduisez dans les fichiers .txt générés (ne touchez pas aux codes (01), (02)...)", 
-        "4. Cliquez sur 'Reconstruire' (vert) pour finaliser",
-        "5. Choisissez 'Nouveau fichier' pour garder l'original ou 'Écraser' pour le remplacer"
+    # Section 2: Comment traduire
+    create_section(scrollable_frame, theme, "🚀 Étapes de traduction", [
+        "1. Ouvrez votre fichier .rpy avec le bouton bleu",
+        "2. Cliquez 'Extraire' pour créer les fichiers de traduction",
+        "3. Traduisez dans les fichiers .txt (gardez les codes (01), (02)...)",
+        "4. Cliquez 'Reconstruire' pour finaliser votre traduction"
     ])
 
-    # Section 3: Fonctionnalités principales (CORRIGÉE)
-    create_section(scrollable_frame, theme, "⭐ Fonctionnalités", [
-        "🎯  Drag & Drop : Glissez directement un fichier .rpy dans la zone de texte",
-        "📁  Mode dossier : Traitez plusieurs fichiers .rpy d'un coup",
-        "🛡️  Sauvegardes automatiques : Vos fichiers originaux sont protégés",
-        "🔍  Validation : Contrôle automatique de la cohérence des traductions",
-        "⭐  Gestion des codes spéciaux : Variables [mc], balises {i}, textes *astérisques*"
+    # Section 3: Points importants
+    create_section(scrollable_frame, theme, "⚠️ Important", [
+        "• Ne touchez jamais aux codes (01), (02)... dans vos traductions",
+        "• Choisissez 'Nouveau fichier' pour garder l'original intact",
+        "• Les textes *entre astérisques* sont dans un fichier séparé",
+        "• Un fichier de temps est créé automatiquement"
     ])
 
-    # Section 4: Conseils pratiques (CORRIGÉE)
-    create_section(scrollable_frame, theme, "💡 Conseils", [
-        "✅  Utilisez 'Nouveau fichier' pour garder l'original intact",
-        "✅  Ne modifiez jamais les codes (01), (02)... dans vos traductions",
-        "✅  Les textes entre *astérisques* sont extraits dans un fichier séparé",
-        "✅  'Nettoyer' vide tout, 'Réinitialiser' ne vide que les données de session",
-        "✅  Le mode dossier mémorise votre choix de sauvegarde pour tous les fichiers"
-    ])
-
-    # Section 5: Problèmes courants (CORRIGÉE)
-    create_section(scrollable_frame, theme, "🔧 En cas de problème", [
-        "❌  'Fichier non valide' → Vérifiez que c'est bien un script .rpy de jeu",
-        "❌  'Nombre incorrect' → Comptez vos lignes de traduction, une ligne = une traduction",
-        "❌  Variables mal restaurées → Refaites une extraction propre et ne touchez pas aux (01)...",
-        "❌  Auto-ouverture ne marche pas → Ouvrez manuellement les fichiers depuis l'explorateur"
+    # Section 4: Options utiles
+    create_section(scrollable_frame, theme, "🛠️ Options disponibles", [
+        "🧹  Nettoyer : Vide tout pour recommencer",
+        "⏱️  Temps : Voir l'historique des temps de traitement",
+        "📂  Auto : Active/désactive l'ouverture automatique des fichiers",
+        "✅  Valid : Active/désactive la validation des traductions"
     ])
     
     # Separator
@@ -264,7 +252,7 @@ def show_tutorial():
 
 def create_section(parent, theme, title, items):
     """
-    Crée une section du tutoriel avec espacement amélioré
+    Crée une section du tutoriel avec espacement optimisé
     
     Args:
         parent: Widget parent
@@ -274,7 +262,7 @@ def create_section(parent, theme, title, items):
     """
     try:
         section_frame = tk.Frame(parent, bg=theme["frame_bg"], relief='solid', bd=1)
-        section_frame.pack(fill='x', pady=8, padx=10)  # RÉDUIT : pady=8 au lieu de 10
+        section_frame.pack(fill='x', pady=6, padx=10)
         
         section_title = tk.Label(
             section_frame,
@@ -283,7 +271,7 @@ def create_section(parent, theme, title, items):
             bg=theme["frame_bg"],
             fg=theme["accent"]
         )
-        section_title.pack(anchor='w', padx=15, pady=(12, 8))  # AJUSTÉ : padding titre
+        section_title.pack(anchor='w', padx=15, pady=(10, 6))
         
         for item in items:
             item_label = tk.Label(
@@ -293,13 +281,13 @@ def create_section(parent, theme, title, items):
                 bg=theme["frame_bg"],
                 fg=theme["fg"],
                 justify='left',
-                wraplength=580,  # RÉDUIT : 580 au lieu de 600
-                anchor='w'  # AJOUTÉ : ancrage à gauche
+                wraplength=550,
+                anchor='w'
             )
-            item_label.pack(anchor='w', padx=15, pady=2)  # AJUSTÉ : pady=2 pour moins d'espace
+            item_label.pack(anchor='w', padx=15, pady=1)
         
-        # Espacement final réduit
-        spacer = tk.Frame(section_frame, bg=theme["frame_bg"], height=6)  # RÉDUIT : 6 au lieu de 8
+        # Espacement final
+        spacer = tk.Frame(section_frame, bg=theme["frame_bg"], height=8)
         spacer.pack()
         
     except Exception as e:
