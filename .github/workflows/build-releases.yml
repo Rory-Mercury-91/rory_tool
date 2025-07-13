@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: read
+  checks: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
