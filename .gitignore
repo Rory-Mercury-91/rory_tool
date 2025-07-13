@@ -1,2 +1,7 @@
 dist/
-build/
+build/__pycache__/
+*.pyc
+*.log
+*.backup
+test_*.txt
+*.flag
