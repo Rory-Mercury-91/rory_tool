@@ -71,7 +71,7 @@ class CoherenceChecker:
         return result
     
     def _analyze_lines(self, lines, result):
-        """Analyse les lignes pour détecter les incohérences"""
+        """Analyse les lignes pour détecter les incohérences - VERSION CORRIGÉE"""
         old_line = None
         old_line_num = 0
         
@@ -97,27 +97,140 @@ class CoherenceChecker:
                     old_line = None
                     old_line_num = 0
                 else:
-                    # NEW sans OLD correspondant
-                    result['issues'].append({
-                        'line': i,
-                        'type': 'MISSING_OLD',
-                        'description': f"Ligne NEW sans OLD correspondant",
-                        'content': stripped
-                    })
+                    # CORRECTION : Vérifier si c'est vraiment un problème
+                    if self._is_missing_old_problematic(stripped, lines, i):
+                        result['issues'].append({
+                            'line': i,
+                            'type': 'MISSING_OLD',
+                            'description': f"Ligne NEW sans OLD correspondant",
+                            'content': stripped[:100] + '...' if len(stripped) > 100 else stripped
+                        })
         
         result['issues_found'] = len(result['issues'])
-    
+
+    def _is_missing_old_problematic(self, new_line, all_lines, line_index):
+        """
+        Vérifie si l'absence de ligne OLD est vraiment problématique
+        
+        Args:
+            new_line (str): La ligne NEW actuelle
+            all_lines (list): Toutes les lignes du fichier
+            line_index (int): Index de la ligne actuelle (1-based)
+            
+        Returns:
+            bool: True si c'est vraiment un problème
+        """
+        try:
+            # CORRECTION 1: Ignorer les lignes dans des blocs de traduction normaux
+            # Chercher les lignes précédentes pour contexte
+            context_range = max(0, line_index - 10)
+            previous_lines = all_lines[context_range:line_index-1]
+            
+            # Si on trouve un bloc de traduction standard, ce n'est pas un problème
+            for prev_line in reversed(previous_lines):
+                prev_stripped = prev_line.strip()
+                
+                # Si on trouve un "translate french" récent, c'est normal
+                if prev_stripped.startswith('translate ') and ':' in prev_stripped:
+                    return False
+                
+                # Si on trouve un commentaire de jeu récent, c'est normal
+                if prev_stripped.startswith('# game/') and '.rpy:' in prev_stripped:
+                    return False
+            
+            # CORRECTION 2: Ignorer les lignes très simples ou vides
+            new_content = new_line.strip()
+            
+            # Lignes vides ou très courtes = pas problématique
+            if len(new_content) <= 5:
+                return False
+            
+            # Lignes avec seulement des variables ou codes = pas problématique
+            if self._is_mostly_code(new_content):
+                return False
+            
+            # CORRECTION 3: Ignorer les menus et strings
+            # Chercher si on est dans une section "strings"
+            for prev_line in reversed(previous_lines):
+                if 'translate french strings:' in prev_line:
+                    return False
+                if prev_line.strip().startswith('translate ') and 'strings' in prev_line:
+                    return False
+            
+            # Si aucune exception trouvée, c'est potentiellement problématique
+            return True
+            
+        except Exception:
+            # En cas d'erreur, ne pas signaler comme problématique
+            return False
+
+    def _is_mostly_code(self, text):
+        """Vérifie si une ligne contient principalement du code/variables"""
+        try:
+            # Compter les caractères de code vs texte normal
+            code_chars = 0
+            total_chars = len(text)
+            
+            if total_chars == 0:
+                return True
+            
+            # Compter les variables [], {}, %(), etc.
+            import re
+            
+            # Variables et codes
+            variables = re.findall(r'\[[^\]]*\]|\{[^}]*\}|%\([^)]*\)|%[a-zA-Z_]|\(\d+\)', text)
+            for var in variables:
+                code_chars += len(var)
+            
+            # Séquences d'échappement
+            escapes = re.findall(r'\\[a-zA-Z]', text)
+            for esc in escapes:
+                code_chars += len(esc)
+            
+            # Si plus de 40% du texte est du code, considérer comme "principalement code"
+            code_ratio = code_chars / total_chars
+            return code_ratio > 0.4
+            
+        except Exception:
+            return False
+
     def _is_old_line(self, line):
-        """Vérifie si une ligne est une ligne OLD commentée"""
-        return (line.startswith('# ') and 
-                ('"' in line or 'old "' in line.lower()))
-    
+        """Vérifie si une ligne est une ligne OLD commentée - VERSION AMÉLIORÉE"""
+        if not line.startswith('# '):
+            return False
+        
+        # Doit contenir des guillemets ou "old"
+        has_quotes = '"' in line
+        has_old_keyword = 'old ' in line.lower()
+        
+        # CORRECTION : Exclure les commentaires de fichier/ligne
+        is_file_comment = line.startswith('# game/') or '.rpy:' in line
+        is_todo_comment = 'TODO:' in line or 'Translation updated' in line
+        
+        return (has_quotes or has_old_keyword) and not is_file_comment and not is_todo_comment
+
     def _is_new_line(self, line):
-        """Vérifie si une ligne est une ligne NEW (traduction)"""
-        return (not line.startswith('#') and 
-                '"' in line and 
-                not line.lower().startswith('old ') and
-                not line.lower().startswith('translate '))
+        """Vérifie si une ligne est une ligne NEW (traduction) - VERSION AMÉLIORÉE"""
+        if line.startswith('#'):
+            return False
+        
+        # Doit contenir des guillemets
+        if '"' not in line:
+            return False
+        
+        # CORRECTION : Exclure les lignes de structure Ren'Py
+        if line.lower().startswith('old '):
+            return False
+        
+        if line.lower().startswith('translate '):
+            return False
+        
+        # Exclure les labels et définitions
+        if ':' in line and any(keyword in line.lower() for keyword in ['label ', 'menu:', 'if ', 'else:', 'elif ']):
+            return False
+        
+        # Si on arrive ici, c'est probablement une vraie ligne de traduction
+        return True
     
     def _check_line_coherence(self, old_line, new_line, old_line_num, new_line_num):
         """Vérifie la cohérence entre une ligne OLD et NEW"""

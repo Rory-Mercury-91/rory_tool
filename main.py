@@ -14,6 +14,8 @@ import os
 import sys
 import time
 import json
+import datetime
+import re
 
 # Import Drag & Drop avec fallback
 try:
@@ -379,7 +381,7 @@ class TraducteurRenPyPro:
         for col in range(3, 8):  # 5 boutons utilitaires
             frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
         
-        # Boutons verts (col 0 & 1)
+        # Boutons verts (col 0, 1 & 2 maintenant)
         btn_extraire = tk.Button(
             frame_actions,
             text="⚡ Extraire",
@@ -392,7 +394,21 @@ class TraducteurRenPyPro:
             command=self.extraire_textes
         )
         btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
-        
+
+        # NOUVEAU BOUTON
+        btn_extract_todo = tk.Button(
+            frame_actions,
+            text="⚡ TODO",
+            font=('Segoe UI', 11),
+            bg='#ff8c00',  # Orange pour le distinguer
+            fg='#000000',
+            activebackground='#e07b00',
+            bd=1,
+            relief='solid',
+            command=self.extraire_textes_avec_selector
+        )
+        btn_extract_todo.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
+
         btn_reconstruire = tk.Button(
             frame_actions,
             text="🔧 Reconstruire",
@@ -404,11 +420,14 @@ class TraducteurRenPyPro:
             relief='solid',
             command=self.reconstruire_fichier
         )
-        btn_reconstruire.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
-        
-        # Séparateur visuel (col 2)
+        btn_reconstruire.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)  # ← Maintenant colonne 2
+
+        # Séparateur visuel (col 3 maintenant)
         separateur = tk.Frame(frame_actions, bg=theme["fg"], width=2)
-        separateur.grid(row=0, column=2, sticky="ns", padx=10, pady=10)
+        separateur.grid(row=0, column=3, sticky="ns", padx=10, pady=10)
+
+        # Utilitaires (col 4 à 8 maintenant)
+        # ... reste identique mais décaler les colonnes de +1
         
         # Utilitaires (col 3 à 7) - AVEC le bouton validation
         utilitaires = [
@@ -1183,7 +1202,79 @@ class TraducteurRenPyPro:
         except Exception as e:
             log_message("ERREUR", f"Impossible de charger le fichier {filepath}", e)
             messagebox.showerror("❌ Erreur", f"Impossible de charger le fichier:\n{str(e)}")
-    
+
+    def extraire_textes_avec_selector(self):
+        """Extrait les textes avec sélecteur de date TODO"""
+        if not self.file_content:
+            messagebox.showwarning("⚠️ Erreur", "Chargez d'abord un fichier .rpy")
+            return
+        
+        try:
+            # Afficher le sélecteur de TODO
+            selector = TodoSelectorDialog(self.root, self.file_content)
+            selection = selector.show()
+            
+            if selection is None:
+                return  # Annulé par l'utilisateur
+            
+            # Animation de progression
+            self.label_stats.config(text="⚙️ Extraction en cours...")
+            self.root.update()
+            
+            # Créer une sauvegarde de sécurité
+            if self.original_path:
+                backup_result = create_safety_backup(self.original_path)
+                if not backup_result['success']:
+                    log_message("WARNING", f"Impossible de créer la sauvegarde: {backup_result['error']}")
+            
+            # Extraction avec filtre
+            extractor = TextExtractor()
+            
+            if selection == "all":
+                # Extraction complète
+                extractor.load_file_content(self.file_content, self.original_path)
+                mode_message = "Extraction complète"
+            else:
+                # Extraction depuis une date TODO (pour l'instant, extraction complète)
+                extractor.load_file_content(self.file_content, self.original_path)
+                mode_message = f"Extraction depuis le {selection['date'].strftime('%d/%m/%Y')}"
+            
+            self.extraction_results = extractor.extract_texts()
+            self.last_extraction_time = extractor.extraction_time
+            self.last_extractor = extractor
+            
+            # Ajouter les compteurs dans extraction_results
+            self.extraction_results['extracted_count'] = extractor.extracted_count
+            self.extraction_results['asterix_count'] = extractor.asterix_count
+            self.extraction_results['empty_count'] = extractor.empty_count
+            
+            # Ouvrir les fichiers si demandé
+            files_to_open = [self.extraction_results['main_file']]
+            if self.extraction_results['asterix_file']:
+                files_to_open.append(self.extraction_results['asterix_file'])
+            if self.extraction_results['empty_file']:
+                files_to_open.append(self.extraction_results['empty_file'])
+            
+            FileOpener.open_files(files_to_open, config_manager.is_auto_open_enabled())
+            
+            # Message de succès avec info sur le mode
+            message = f"✅ {mode_message} terminée en {self.last_extraction_time:.2f}s !"
+            message += f"\n\n📝 {extractor.extracted_count} textes extraits dans {self.extraction_results['main_file']}"
+            
+            if extractor.asterix_count > 0:
+                message += f"\n⭐ {extractor.asterix_count} expressions entre astérisques dans {self.extraction_results['asterix_file']}"
+            
+            if extractor.empty_count > 0:
+                message += f"\n🔳 {extractor.empty_count} textes vides/espaces dans {self.extraction_results['empty_file']}"
+            
+            self.label_stats.config(text=f"📊 {extractor.extracted_count} textes extraits | ⏱️ {self.last_extraction_time:.2f}s")
+            messagebox.showinfo("🎉 Extraction terminée", message)
+            
+        except Exception as e:
+            log_message("ERREUR", "Erreur critique pendant l'extraction avec sélecteur", e)
+            messagebox.showerror("❌ Erreur", f"Erreur pendant l'extraction:\n{str(e)}")
+            self.label_stats.config(text="❌ Erreur lors de l'extraction")
+
     def extraire_textes(self):
         """Extrait les textes du fichier chargé"""
         if not self.file_content:
@@ -1506,6 +1597,305 @@ class TraducteurRenPyPro:
     def run(self):
         """Lance l'application"""
         self.root.mainloop()
+
+class TodoSelectorDialog:
+    """Dialogue pour sélectionner à partir de quelle date TODO extraire"""
+    
+    def __init__(self, parent, file_content):
+        self.parent = parent
+        self.file_content = file_content
+        self.result = None
+        self.dialog = None
+        self.todo_dates = []
+    
+    def show(self):
+        """Affiche le dialogue et retourne la date sélectionnée"""
+        # D'abord analyser les TODO
+        self._analyze_todo_dates()
+        
+        if not self.todo_dates:
+            messagebox.showinfo(
+                "ℹ️ Aucun TODO trouvé",
+                "Aucune ligne TODO avec date trouvée dans ce fichier.\n\n"
+                "L'extraction complète sera effectuée."
+            )
+            return None
+        
+        # Créer le dialogue
+        self.dialog = tk.Toplevel(self.parent)
+        self.dialog.title("📅 Sélectionner la date TODO")
+        self.dialog.geometry("500x400")
+        self.dialog.resizable(False, False)
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+        
+        # Centrer la fenêtre
+        self.dialog.update_idletasks()
+        x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
+        y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
+        self.dialog.geometry(f"+{x}+{y}")
+        
+        # Thème
+        from utils.config import config_manager
+        from utils.constants import THEMES
+        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+        self.dialog.configure(bg=theme["bg"])
+        
+        self._create_content(theme)
+        
+        # Attendre la réponse
+        self.dialog.wait_window()
+        return self.result
+    
+    def _analyze_todo_dates(self):
+        """Analyse le fichier pour trouver toutes les dates TODO"""
+        self.todo_dates = []
+        
+        for i, line in enumerate(self.file_content):
+            stripped = line.strip()
+            
+            # Détecter les lignes TODO avec date
+            if stripped.startswith('# TODO:') and 'Translation updated at' in stripped:
+                todo_date = self._extract_todo_date(stripped)
+                
+                if todo_date:
+                    # Compter les lignes de traduction dans cette section
+                    line_count = self._count_lines_in_section(i)
+                    
+                    self.todo_dates.append({
+                        'date': todo_date,
+                        'line_number': i + 1,
+                        'raw_line': stripped,
+                        'line_count': line_count,
+                        'is_today': todo_date == datetime.date.today()
+                    })
+        
+        # Trier par date (plus récent en premier)
+        self.todo_dates.sort(key=lambda x: x['date'], reverse=True)
+    
+    def _extract_todo_date(self, todo_line):
+        """Extrait la date d'une ligne TODO"""
+        try:
+            # Patterns de date possibles
+            patterns = [
+                r'(\d{4})-(\d{2})-(\d{2})',      # 2025-01-15
+                r'(\d{2})/(\d{2})/(\d{4})',      # 15/01/2025
+                r'(\d{2})-(\d{2})-(\d{4})',      # 15-01-2025
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, todo_line)
+                if match:
+                    groups = match.groups()
+                    
+                    if pattern.startswith(r'(\d{4})'):  # Format YYYY-MM-DD
+                        year, month, day = int(groups[0]), int(groups[1]), int(groups[2])
+                    else:  # Formats DD/MM/YYYY ou DD-MM-YYYY
+                        day, month, year = int(groups[0]), int(groups[1]), int(groups[2])
+                    
+                    return datetime.date(year, month, day)
+            
+            return None
+            
+        except Exception:
+            return None
+    
+    def _count_lines_in_section(self, todo_line_index):
+        """Compte approximativement les lignes de traduction dans une section TODO"""
+        count = 0
+        start_index = todo_line_index + 1
+        
+        # Chercher jusqu'à la prochaine ligne TODO ou fin de fichier
+        for i in range(start_index, len(self.file_content)):
+            line = self.file_content[i].strip()
+            
+            # Arrêter à la prochaine ligne TODO
+            if line.startswith('# TODO:') and 'Translation updated at' in line:
+                break
+            
+            # Compter les lignes qui semblent être des traductions
+            if (line and 
+                not line.startswith('#') and 
+                '"' in line and 
+                not line.lower().startswith(('translate ', 'old '))):
+                count += 1
+        
+        return count
+    
+    def _create_content(self, theme):
+        """Crée le contenu du dialogue"""
+        # En-tête
+        header_frame = tk.Frame(self.dialog, bg=theme["bg"])
+        header_frame.pack(fill='x', padx=20, pady=20)
+        
+        title_label = tk.Label(
+            header_frame,
+            text="📅 Sélectionner la date TODO",
+            font=('Segoe UI', 14, 'bold'),
+            bg=theme["bg"],
+            fg=theme["fg"]
+        )
+        title_label.pack()
+        
+        subtitle_label = tk.Label(
+            header_frame,
+            text="Choisissez à partir de quelle mise à jour extraire les textes",
+            font=('Segoe UI', 10),
+            bg=theme["bg"],
+            fg=theme["fg"]
+        )
+        subtitle_label.pack(pady=(5, 0))
+        
+        # Liste des TODO
+        list_frame = tk.Frame(self.dialog, bg=theme["bg"])
+        list_frame.pack(fill='both', expand=True, padx=20)
+        
+        # Treeview pour afficher les TODO
+        columns = ("Date", "Lignes", "État")
+        self.todo_tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=10)
+        
+        self.todo_tree.heading("Date", text="📅 Date de mise à jour")
+        self.todo_tree.heading("Lignes", text="📝 Lignes (~)")
+        self.todo_tree.heading("État", text="⏰ État")
+        
+        self.todo_tree.column("Date", width=200)
+        self.todo_tree.column("Lignes", width=100)
+        self.todo_tree.column("État", width=150)
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.todo_tree.yview)
+        self.todo_tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.todo_tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Remplir la liste
+        for i, todo_info in enumerate(self.todo_dates):
+            date_str = todo_info['date'].strftime("%d/%m/%Y")
+            line_count = f"~{todo_info['line_count']}"
+            state = "🟢 Aujourd'hui" if todo_info['is_today'] else "📝 Ancienne"
+            
+            item = self.todo_tree.insert("", "end", values=(date_str, line_count, state))
+            
+            # Sélectionner automatiquement la plus récente
+            if i == 0:
+                self.todo_tree.selection_set(item)
+                self.todo_tree.focus(item)
+        
+        # Options
+        options_frame = tk.Frame(self.dialog, bg=theme["bg"])
+        options_frame.pack(fill='x', padx=20, pady=10)
+        
+        # Option "Tout extraire"
+        self.extract_all_var = tk.BooleanVar()
+        extract_all_check = tk.Checkbutton(
+            options_frame,
+            text="📦 Extraire tout (ignorer la sélection)",
+            variable=self.extract_all_var,
+            font=('Segoe UI', 10),
+            bg=theme["bg"],
+            fg=theme["fg"],
+            selectcolor=theme["frame_bg"],
+            activebackground=theme["bg"],
+            activeforeground=theme["fg"]
+        )
+        extract_all_check.pack(anchor='w')
+        
+        # Boutons
+        button_frame = tk.Frame(self.dialog, bg=theme["bg"])
+        button_frame.pack(fill='x', padx=20, pady=(0, 20))
+        
+        # Info sur la sélection
+        self.info_label = tk.Label(
+            button_frame,
+            text="💡 Sélectionnez une date dans la liste ci-dessus",
+            font=('Segoe UI', 9),
+            bg=theme["bg"],
+            fg=theme["fg"]
+        )
+        self.info_label.pack(side='left')
+        
+        # Bouton Annuler
+        cancel_btn = tk.Button(
+            button_frame,
+            text="❌ Annuler",
+            font=('Segoe UI', 10),
+            bg=theme["danger"],
+            fg=theme["button_fg"],
+            command=self._cancel
+        )
+        cancel_btn.pack(side='right', padx=(10, 0))
+        
+        # Bouton Extraire
+        extract_btn = tk.Button(
+            button_frame,
+            text="⚡ Extraire",
+            font=('Segoe UI', 10, 'bold'),
+            bg=theme["accent"],
+            fg=theme["button_fg"],
+            command=self._extract
+        )
+        extract_btn.pack(side='right')
+        
+        # Bind pour la sélection
+        self.todo_tree.bind('<<TreeviewSelect>>', self._on_selection_change)
+        
+        # Mettre à jour l'info initiale
+        self._on_selection_change(None)
+    
+    def _on_selection_change(self, event):
+        """Met à jour l'info quand la sélection change"""
+        try:
+            if self.extract_all_var.get():
+                self.info_label.config(text="📦 Mode extraction complète sélectionné")
+                return
+            
+            selection = self.todo_tree.selection()
+            if selection:
+                item = selection[0]
+                values = self.todo_tree.item(item, 'values')
+                date_str = values[0]
+                line_count = values[1]
+                
+                self.info_label.config(
+                    text=f"📅 Extraire depuis le {date_str} ({line_count} lignes environ)"
+                )
+            else:
+                self.info_label.config(text="💡 Sélectionnez une date dans la liste")
+                
+        except Exception:
+            pass
+    
+    def _extract(self):
+        """Lance l'extraction avec la date sélectionnée"""
+        try:
+            if self.extract_all_var.get():
+                # Extraction complète
+                self.result = "all"
+            else:
+                # Extraction depuis une date TODO
+                selection = self.todo_tree.selection()
+                if not selection:
+                    messagebox.showwarning(
+                        "⚠️ Aucune sélection",
+                        "Veuillez sélectionner une date TODO ou cocher 'Extraire tout'."
+                    )
+                    return
+                
+                # Trouver l'index de la date sélectionnée
+                item_index = self.todo_tree.index(selection[0])
+                selected_todo = self.todo_dates[item_index]
+                self.result = selected_todo
+            
+            self.dialog.destroy()
+            
+        except Exception as e:
+            messagebox.showerror("❌ Erreur", f"Erreur lors de la sélection:\n{str(e)}")
+    
+    def _cancel(self):
+        """Annule la sélection"""
+        self.result = None
+        self.dialog.destroy()
 
 # =============================================================================
 # POINT D'ENTRÉE DE L'APPLICATION
