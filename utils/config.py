@@ -1,6 +1,6 @@
 # utils/config.py
 # Configuration Management Module
-# Created for Traducteur Ren'Py Pro v1.1.0
+# Created for Traducteur Ren'Py Pro v1.5.0
 
 """
 Module de gestion de la configuration et des préférences utilisateur
