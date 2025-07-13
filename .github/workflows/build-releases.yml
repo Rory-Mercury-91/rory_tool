@@ -34,7 +34,7 @@ jobs:
         Get-FileHash TraducteurRenPyPro.exe -Algorithm SHA256 | Out-File TraducteurRenPyPro-Windows.sha256
     
     - name: Upload Windows artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: TraducteurRenPyPro-Windows
         path: |
@@ -43,7 +43,7 @@ jobs:
     
     - name: Release Windows
       if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           dist/TraducteurRenPyPro-Windows-x64.zip
@@ -83,7 +83,7 @@ jobs:
         sha256sum TraducteurRenPyPro > TraducteurRenPyPro-Linux.sha256
     
     - name: Upload Linux artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: TraducteurRenPyPro-Linux
         path: |
@@ -92,7 +92,7 @@ jobs:
     
     - name: Release Linux
       if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           dist/TraducteurRenPyPro-Linux-x64.tar.gz
