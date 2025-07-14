@@ -1,6 +1,6 @@
 # main.py
 # Traducteur Ren'Py Pro - Interface principale
-# Version 1.5.0 - Corrections finales des erreurs self
+# Version 1.8.0 - Corrections finales des erreurs self
 
 """
 Traducteur Ren'Py Pro

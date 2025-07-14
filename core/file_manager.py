@@ -1,6 +1,6 @@
 # core/file_manager.py
 # File Management Module
-# Created for Traducteur Ren'Py Pro v1.5.0
+# Created for Traducteur Ren'Py Pro v1.8.0
 
 """
 Module de gestion des fichiers et opérations système

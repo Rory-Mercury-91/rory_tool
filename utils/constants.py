@@ -1,6 +1,6 @@
 # utils/constants.py
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v1.5.0
+# Created for Traducteur Ren'Py Pro v1.8.0
 
 """
 Module contenant toutes les constantes de l'application
@@ -9,7 +9,7 @@ Module contenant toutes les constantes de l'application
 import os
 
 # Version de l'application
-VERSION = "1.5.0"
+VERSION = "1.8.0"
 
 # Dossiers d'organisation
 FOLDERS = {
