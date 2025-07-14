@@ -1,6 +1,6 @@
 # core/extraction.py
 # Extraction Functions Module
-# Created for Traducteur Ren'Py Pro v1.8.0
+# Created for Traducteur Ren'Py Pro v1.9.0
 
 """
 Module d'extraction des textes depuis les fichiers Ren'Py
@@ -338,85 +338,101 @@ class TextExtractor:
             raise
     
     def _save_extraction_files(self):
-            """Sauvegarde tous les fichiers d'extraction avec noms uniques dans les dossiers organisés"""
-            from utils.constants import FOLDERS, ensure_folders_exist
+        """Sauvegarde tous les fichiers d'extraction avec la nouvelle structure organisée"""
+        from utils.constants import FOLDERS, ensure_folders_exist
+        from utils.logging import extract_game_name
+        
+        # S'assurer que les dossiers existent
+        ensure_folders_exist()
+        
+        file_base = get_file_base_name(self.original_path)
+        game_name = extract_game_name(self.original_path)
+        
+        result = {
+            'file_base': file_base,
+            'main_file': None,
+            'asterix_file': None,
+            'empty_file': None,
+            'mapping_files': []
+        }
+        
+        try:
+            # Créer la structure complète du dossier temporaire pour ce jeu
+            temp_folder = os.path.join(FOLDERS["temp"], game_name)
+            folders_to_create = [
+                temp_folder,
+                os.path.join(temp_folder, "fichiers_a_traduire"),
+                os.path.join(temp_folder, "fichiers_a_ne_pas_traduire"),
+                os.path.join(temp_folder, "fichiers_d_avertissement")
+            ]
             
-            # S'assurer que les dossiers existent
-            ensure_folders_exist()
+            for folder in folders_to_create:
+                os.makedirs(folder, exist_ok=True)
             
-            file_base = get_file_base_name(self.original_path)
-            result = {
-                'file_base': file_base,
-                'main_file': None,
-                'asterix_file': None,
-                'empty_file': None,
-                'mapping_files': []
+            # Sauvegarder les mappings dans le dossier fichiers_a_ne_pas_traduire
+            mapping_folder = os.path.join(temp_folder, "fichiers_a_ne_pas_traduire")
+            mapping_files = [
+                os.path.join(mapping_folder, f'{file_base}_mapping.txt'),
+                os.path.join(mapping_folder, f'{file_base}_asterix_mapping.txt'),
+                os.path.join(mapping_folder, f'{file_base}_empty_mapping.txt')
+            ]
+            
+            with open(mapping_files[0], 'w', encoding='utf-8', newline='') as mf:
+                for tag, ph in self.mapping.items():
+                    mf.write(f"{ph} => {tag}\n")
+            
+            with open(mapping_files[1], 'w', encoding='utf-8', newline='') as amf:
+                for asterix, placeholder in self.asterix_mapping.items():
+                    amf.write(f"{placeholder} => {asterix}\n")
+            
+            with open(mapping_files[2], 'w', encoding='utf-8', newline='') as emf:
+                for empty, placeholder in self.empty_mapping.items():
+                    emf.write(f"{placeholder} => {empty}\n")
+            
+            result['mapping_files'] = mapping_files
+            
+            # Sauvegarder les positions dans le même dossier
+            position_data = {
+                'positions': self.positions,
+                'quote_counts': self.line_quote_counts,
+                'suffixes': self.line_suffixes
             }
             
-            try:
-                # Dossier temporaire pour les fichiers de mapping
-                temp_folder = FOLDERS["temp"]
-                
-                # Sauvegarder les mappings dans le dossier temporaire
-                mapping_files = [
-                    os.path.join(temp_folder, f'{file_base}_mapping.txt'),
-                    os.path.join(temp_folder, f'{file_base}_asterix_mapping.txt'),
-                    os.path.join(temp_folder, f'{file_base}_empty_mapping.txt')
-                ]
-                
-                with open(mapping_files[0], 'w', encoding='utf-8', newline='') as mf:
-                    for tag, ph in self.mapping.items():
-                        mf.write(f"{ph} => {tag}\n")
-                
-                with open(mapping_files[1], 'w', encoding='utf-8', newline='') as amf:
-                    for asterix, placeholder in self.asterix_mapping.items():
-                        amf.write(f"{placeholder} => {asterix}\n")
-                
-                with open(mapping_files[2], 'w', encoding='utf-8', newline='') as emf:
-                    for empty, placeholder in self.empty_mapping.items():
-                        emf.write(f"{placeholder} => {empty}\n")
-                
-                result['mapping_files'] = mapping_files
-                
-                # Sauvegarder les positions dans le dossier temporaire
-                position_data = {
-                    'positions': self.positions,
-                    'quote_counts': self.line_quote_counts,
-                    'suffixes': self.line_suffixes
-                }
-                
-                positions_file = os.path.join(temp_folder, f'{file_base}_positions.json')
-                with open(positions_file, 'w', encoding='utf-8', newline='') as pf:
-                    json.dump(position_data, pf, ensure_ascii=False)
-                
-                result['positions_file'] = positions_file
-                
-                # Écrire les fichiers de textes (à la racine pour l'utilisateur)
-                main_file = f'{file_base}.txt'
-                with open(main_file, 'w', encoding='utf-8', newline='') as vf:
-                    vf.writelines(self.extracted_texts)
-                result['main_file'] = main_file
-                
-                # Créer fichier astérisques seulement s'il y a du contenu
-                if self.asterix_texts:
-                    asterix_file = f'{file_base}_asterix.txt'
-                    with open(asterix_file, 'w', encoding='utf-8', newline='') as af:
-                        af.writelines(self.asterix_texts)
-                    result['asterix_file'] = asterix_file
-                
-                # Créer fichier textes vides seulement s'il y a du contenu
-                if self.empty_texts:
-                    empty_file = f'{file_base}_empty.txt'
-                    with open(empty_file, 'w', encoding='utf-8', newline='') as ef:
-                        ef.writelines(self.empty_texts)
-                    result['empty_file'] = empty_file
-                
-                log_message("INFO", f"Fichiers d'extraction créés: {main_file} (mappings dans {temp_folder})")
-                return result
-                
-            except Exception as e:
-                log_message("ERREUR", "Erreur lors de la création des fichiers d'extraction", e)
-                raise
+            positions_file = os.path.join(mapping_folder, f'{file_base}_positions.json')
+            with open(positions_file, 'w', encoding='utf-8', newline='') as pf:
+                json.dump(position_data, pf, ensure_ascii=False)
+            
+            result['positions_file'] = positions_file
+            
+            # Écrire les fichiers de textes dans fichiers_a_traduire
+            translate_folder = os.path.join(temp_folder, "fichiers_a_traduire")
+            
+            # Fichier principal dans le dossier fichiers_a_traduire
+            main_file = os.path.join(translate_folder, f'{file_base}.txt')
+            with open(main_file, 'w', encoding='utf-8', newline='') as vf:
+                vf.writelines(self.extracted_texts)
+            result['main_file'] = main_file
+            
+            # Créer fichier astérisques seulement s'il y a du contenu
+            if self.asterix_texts:
+                asterix_file = os.path.join(translate_folder, f'{file_base}_asterix.txt')
+                with open(asterix_file, 'w', encoding='utf-8', newline='') as af:
+                    af.writelines(self.asterix_texts)
+                result['asterix_file'] = asterix_file
+            
+            # Créer fichier textes vides seulement s'il y a du contenu
+            if self.empty_texts:
+                empty_file = os.path.join(translate_folder, f'{file_base}_empty.txt')
+                with open(empty_file, 'w', encoding='utf-8', newline='') as ef:
+                    ef.writelines(self.empty_texts)
+                result['empty_file'] = empty_file
+            
+            log_message("INFO", f"Fichiers d'extraction créés dans temporaires/{game_name}/")
+            return result
+            
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors de la création des fichiers d'extraction", e)
+            raise
 
 # Fonction utilitaire pour compatibilité avec l'ancienne interface
 def extraire_textes(file_content, original_path):

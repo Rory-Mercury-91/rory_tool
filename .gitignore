@@ -6,3 +6,4 @@ __pycache__/
 *.backup
 test_*.txt
 *.flag
+*.txt

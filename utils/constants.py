@@ -1,6 +1,6 @@
-# utils/constants.py
+# utils/constants.py - THÈMES CORRIGÉS
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v1.8.0
+# Created for Traducteur Ren'Py Pro v1.9.0
 
 """
 Module contenant toutes les constantes de l'application
@@ -19,44 +19,45 @@ FOLDERS = {
     "logs": "logs"
 }
 
-# Couleurs pour les thèmes
+# ✅ THÈMES COMPLÈTEMENT DIFFÉRENTS VISUELLEMENT
 THEMES = {
     "dark": {
-        "bg": "#2b2b2b",
-        "fg": "#ffffff",
-        "frame_bg": "#3c3c3c", 
-        "button_bg": "#3c3c3c",
-        "entry_bg": "#404040",
-        "entry_fg": "#ffffff",
-        "select_bg": "#0078d4",
-        "select_fg": "#ffffff",
-        "accent": "#4CAF50",
-        "warning": "#ffc107", 
-        "danger": "#dc3545",
-        "button_fg": "#000000"
+        # 🌙 MODE SOMBRE - Vraiment sombre
+        "bg": "#1e1e1e",              # Gris très foncé (VS Code style)
+        "fg": "#ffffff",              # Blanc pur
+        "frame_bg": "#2d2d2d",        # Gris foncé pour les frames
+        "button_bg": "#3c3c3c",       # Gris moyen pour boutons
+        "entry_bg": "#252526",        # Gris très foncé pour zone de texte
+        "entry_fg": "#cccccc",        # Gris clair pour texte
+        "select_bg": "#0078d4",       # Bleu Microsoft
+        "select_fg": "#ffffff",       # Blanc sur sélection
+        "accent": "#4CAF50",          # Vert accent
+        "warning": "#ffb74d",         # Orange warning
+        "danger": "#f44336",          # Rouge danger
+        "button_fg": "#ffffff"        # ✅ BLANC pour boutons en mode sombre
     },
     "light": {
-        # Mode "confortable" - Ni trop clair, ni trop foncé
-        "bg": "#f6f6f4",           # Gris chaud très clair
-        "fg": "#333333",           # Gris foncé standard
-        "frame_bg": "#eeebe7",     # Beige gris clair
-        "button_bg": "#eeebe7",    # Harmonisé avec frame
-        "entry_bg": "#ffffff",     # Blanc pur pour le texte (lisibilité)
-        "entry_fg": "#2c2c2c",     # Gris très foncé pour contraste
-        "select_bg": "#4a90e2",    # Bleu plus doux
-        "select_fg": "#ffffff",    # Blanc sur bleu
-        "accent": "#43a047",       # Vert équilibré
-        "warning": "#fb8c00",      # Orange équilibré
-        "danger": "#d32f2f",       # Rouge standard
-        "button_fg": "#000000"     # Noir pour lisibilité
+        # ☀️ MODE CLAIR - Vraiment clair
+        "bg": "#ffffff",              # Blanc pur
+        "fg": "#212121",              # Gris très foncé
+        "frame_bg": "#f5f5f5",        # Gris très clair pour frames
+        "button_bg": "#e0e0e0",       # Gris clair pour boutons
+        "entry_bg": "#ffffff",        # Blanc pur pour zone de texte
+        "entry_fg": "#212121",        # Noir pour texte
+        "select_bg": "#1976d2",       # Bleu Material Design
+        "select_fg": "#ffffff",       # Blanc sur sélection
+        "accent": "#2e7d32",          # Vert foncé
+        "warning": "#f57c00",         # Orange foncé
+        "danger": "#c62828",          # Rouge foncé
+        "button_fg": "#000000"        # ✅ NOIR pour boutons en mode clair
     }
 }
 
 # Configuration des fenêtres
 WINDOW_CONFIG = {
     "title": f"🎮 Traducteur Ren'Py Pro v{VERSION}",
-    "geometry": "1100x700",  # MODIFIÉ : Élargi de 1000x700 à 1100x700
-    "min_size": (900, 600)   # MODIFIÉ : Minimum augmenté aussi
+    "geometry": "1100x700",
+    "min_size": (900, 600)
 }
 
 # Codes spéciaux Ren'Py à protéger

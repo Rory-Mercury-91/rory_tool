@@ -1,6 +1,6 @@
 # core/coherence_checker.py
 # Coherence Checker Module
-# Created for Traducteur Ren'Py Pro v1.8.0
+# Created for Traducteur Ren'Py Pro v1.9.0
 
 """
 Module de vérification de la cohérence entre lignes OLD et NEW
@@ -71,20 +71,20 @@ class CoherenceChecker:
         return result
     
     def _analyze_lines(self, lines, result):
-        """Analyse les lignes pour détecter les incohérences - VERSION CORRIGÉE"""
+        """Analyse les lignes - VERSION CORRIGÉE pour strings"""
         old_line = None
         old_line_num = 0
         
         for i, line in enumerate(lines, 1):
             stripped = line.strip()
             
-            # Détecter les lignes OLD commentées
+            # Détecter les lignes OLD
             if self._is_old_line(stripped):
                 old_line = stripped
                 old_line_num = i
                 continue
             
-            # Détecter les lignes NEW (traductions)
+            # Détecter les lignes NEW
             if self._is_new_line(stripped):
                 result['checked_lines'] += 1
                 
@@ -97,6 +97,11 @@ class CoherenceChecker:
                     old_line = None
                     old_line_num = 0
                 else:
+                    # CORRECTION : Vérifier si on est dans une section strings
+                    if self._is_in_strings_section(i, lines):
+                        # Dans strings, c'est normal d'avoir NEW sans OLD commenté
+                        continue
+                    
                     # CORRECTION : Vérifier si c'est vraiment un problème
                     if self._is_missing_old_problematic(stripped, lines, i):
                         result['issues'].append({
@@ -110,7 +115,7 @@ class CoherenceChecker:
 
     def _is_missing_old_problematic(self, new_line, all_lines, line_index):
         """
-        Vérifie si l'absence de ligne OLD est vraiment problématique
+        Vérifie si l'absence de ligne OLD est vraiment problématique - VERSION CORRIGÉE
         
         Args:
             new_line (str): La ligne NEW actuelle
@@ -121,6 +126,10 @@ class CoherenceChecker:
             bool: True si c'est vraiment un problème
         """
         try:
+            # CORRECTION PRIORITAIRE : Vérifier si on est dans une section strings
+            if self._is_in_strings_section(line_index, all_lines):
+                return False  # Dans une section strings, c'est normal d'avoir NEW sans OLD commenté
+            
             # CORRECTION 1: Ignorer les lignes dans des blocs de traduction normaux
             # Chercher les lignes précédentes pour contexte
             context_range = max(0, line_index - 10)
@@ -134,8 +143,10 @@ class CoherenceChecker:
                 if prev_stripped.startswith('translate ') and ':' in prev_stripped:
                     return False
                 
-                # Si on trouve un commentaire de jeu récent, c'est normal
-                if prev_stripped.startswith('# game/') and '.rpy:' in prev_stripped:
+                # CORRECTION : Support de tous les types de commentaires de fichier
+                if (prev_stripped.startswith('# game/') or 
+                    prev_stripped.startswith('# renpy/') or 
+                    prev_stripped.startswith('# common/')) and '.rpy:' in prev_stripped:
                     return False
             
             # CORRECTION 2: Ignorer les lignes très simples ou vides
@@ -149,13 +160,27 @@ class CoherenceChecker:
             if self._is_mostly_code(new_content):
                 return False
             
-            # CORRECTION 3: Ignorer les menus et strings
-            # Chercher si on est dans une section "strings"
+            # CORRECTION 3: Ignorer les sections menu et autres structures spéciales
             for prev_line in reversed(previous_lines):
-                if 'translate french strings:' in prev_line:
+                prev_stripped = prev_line.strip()
+                
+                # Section strings (double vérification)
+                if 'translate french strings:' in prev_stripped:
                     return False
-                if prev_line.strip().startswith('translate ') and 'strings' in prev_line:
+                if prev_stripped.startswith('translate ') and 'strings' in prev_stripped:
                     return False
+                
+                # Sections menu
+                if prev_stripped.startswith('translate ') and 'menu' in prev_stripped:
+                    return False
+            
+            # CORRECTION 4: Ignorer les lignes qui commencent par new (cas non commenté)
+            if new_content.startswith('new ') and '"' in new_content:
+                # C'est une ligne NEW non commentée, vérifier s'il y a un OLD correspondant juste avant
+                if line_index > 1:
+                    prev_line = all_lines[line_index - 2].strip()  # line_index est 1-based
+                    if prev_line.startswith('old ') and '"' in prev_line:
+                        return False  # Il y a bien un OLD correspondant
             
             # Si aucune exception trouvée, c'est potentiellement problématique
             return True
@@ -195,43 +220,93 @@ class CoherenceChecker:
             return False
 
     def _is_old_line(self, line):
-        """Vérifie si une ligne est une ligne OLD commentée - VERSION AMÉLIORÉE"""
-        if not line.startswith('# '):
+        """Vérifie si une ligne est une ligne OLD - VERSION CORRIGÉE"""
+        stripped = line.strip()
+        
+        # Cas 1: OLD non commenté dans les sections strings
+        if stripped.startswith('old ') and '"' in stripped:
+            return True
+        
+        # Cas 2: OLD commenté classique
+        if not stripped.startswith('# '):
             return False
         
         # Doit contenir des guillemets ou "old"
-        has_quotes = '"' in line
-        has_old_keyword = 'old ' in line.lower()
+        has_quotes = '"' in stripped
+        has_old_keyword = 'old ' in stripped.lower()
         
-        # CORRECTION : Exclure les commentaires de fichier/ligne
-        is_file_comment = line.startswith('# game/') or '.rpy:' in line
-        is_todo_comment = 'TODO:' in line or 'Translation updated' in line
+        # CORRECTION : Supporter tous les types de chemins de fichiers
+        is_file_comment = (stripped.startswith('# game/') or 
+                        stripped.startswith('# renpy/') or    # ← NOUVEAU
+                        stripped.startswith('# common/') or   # ← NOUVEAU  
+                        '.rpy:' in stripped)
+        is_todo_comment = 'TODO:' in stripped or 'Translation updated' in stripped
         
         return (has_quotes or has_old_keyword) and not is_file_comment and not is_todo_comment
 
     def _is_new_line(self, line):
-        """Vérifie si une ligne est une ligne NEW (traduction) - VERSION AMÉLIORÉE"""
-        if line.startswith('#'):
+        """Vérifie si une ligne est une ligne NEW - VERSION CORRIGÉE"""
+        stripped = line.strip()
+        
+        if stripped.startswith('#'):
             return False
         
-        # Doit contenir des guillemets
-        if '"' not in line:
+        # CORRECTION : Exclure les lignes OLD non commentées
+        if stripped.startswith('old '):
             return False
         
-        # CORRECTION : Exclure les lignes de structure Ren'Py
-        if line.lower().startswith('old '):
+        # CORRECTION : Détecter les lignes NEW non commentées dans strings
+        if stripped.startswith('new ') and '"' in stripped:
+            return True
+        
+        # Doit contenir des guillemets pour les lignes classiques
+        if '"' not in stripped:
             return False
         
-        if line.lower().startswith('translate '):
+        # Exclure les lignes de structure Ren'Py
+        if stripped.lower().startswith('translate '):
             return False
         
         # Exclure les labels et définitions
-        if ':' in line and any(keyword in line.lower() for keyword in ['label ', 'menu:', 'if ', 'else:', 'elif ']):
+        if ':' in stripped and any(keyword in stripped.lower() for keyword in ['label ', 'menu:', 'if ', 'else:', 'elif ']):
             return False
         
-        # Si on arrive ici, c'est probablement une vraie ligne de traduction
         return True
-    
+
+    def _is_in_strings_section(self, line_index, all_lines):
+        """
+        Détecte si on est dans une section translate strings
+        
+        Args:
+            line_index (int): Index de la ligne actuelle (1-based)
+            all_lines (list): Toutes les lignes du fichier
+            
+        Returns:
+            bool: True si on est dans une section strings
+        """
+        try:
+            # Chercher en arrière jusqu'à 50 lignes pour trouver le début de section
+            search_start = max(0, line_index - 50)
+            
+            for i in range(search_start, line_index):
+                line = all_lines[i].strip()
+                
+                # Trouvé une section strings
+                if line.startswith('translate ') and line.endswith('strings:'):
+                    return True
+                    
+                # Trouvé une autre section translate (dialogue normal)
+                if (line.startswith('translate ') and 
+                    not line.endswith('strings:') and 
+                    ':' in line and
+                    'strings' not in line):
+                    return False
+            
+            return False
+            
+        except Exception:
+            return False
+
     def _check_line_coherence(self, old_line, new_line, old_line_num, new_line_num):
         """Vérifie la cohérence entre une ligne OLD et NEW"""
         issues = []
