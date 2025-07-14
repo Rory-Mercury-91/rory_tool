@@ -1,6 +1,6 @@
 # core/coherence_checker.py
 # Coherence Checker Module
-# Created for Traducteur Ren'Py Pro v1.1.2
+# Created for Traducteur Ren'Py Pro v1.8.0
 
 """
 Module de vérification de la cohérence entre lignes OLD et NEW

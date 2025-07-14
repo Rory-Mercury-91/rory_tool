@@ -1,6 +1,6 @@
 # ui/tutorial.py
 # Tutorial System Module
-# Created for Traducteur Ren'Py Pro v1.1.2
+# Created for Traducteur Ren'Py Pro v1.8.0
 
 """
 Module du système de tutoriel intégré
