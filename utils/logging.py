@@ -3,14 +3,30 @@
 # Created for Traducteur Ren'Py Pro v1.5.0
 
 """
-Module de gestion des logs et de l'historique des performances
+Module de gestion des logs
 """
 
 import datetime
-import json
 import os
 import re
 from .constants import FILE_NAMES
+
+def initialize_log():
+    """Initialise/réinitialise le fichier log au démarrage"""
+    try:
+        # Créer le dossier logs s'il n'existe pas
+        log_dir = os.path.dirname(FILE_NAMES["log"])
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        
+        # Réinitialiser le fichier log
+        with open(FILE_NAMES["log"], 'w', encoding='utf-8') as f:
+            f.write(f"=== TRADUCTEUR REN'PY PRO - LOG DE SESSION ===\n")
+            f.write(f"Démarrage: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 50 + "\n\n")
+            
+    except Exception as e:
+        print(f"⚠️ Impossible d'initialiser le log: {e}")
 
 def log_message(level, message, exception=None):
     """
@@ -35,6 +51,28 @@ def log_message(level, message, exception=None):
             
     except:
         pass  # Échec silencieux pour éviter les boucles d'erreur
+
+def log_performance(operation, file_name, duration, details=None):
+    """
+    Log les performances d'une opération
+    
+    Args:
+        operation (str): Type d'opération (extraction, reconstruction)
+        file_name (str): Nom du fichier traité
+        duration (float): Durée en secondes
+        details (dict, optional): Détails supplémentaires
+    """
+    try:
+        message = f"[PERFORMANCE] {operation} - {file_name} - {duration:.2f}s"
+        
+        if details:
+            details_str = " | ".join([f"{k}: {v}" for k, v in details.items()])
+            message += f" | {details_str}"
+        
+        log_message("INFO", message)
+        
+    except Exception as e:
+        log_message("WARNING", f"Impossible de logger la performance: {str(e)}")
 
 def anonymize_path(path):
     """
@@ -103,86 +141,4 @@ def extract_game_name(file_path):
         log_message("WARNING", f"Impossible d'extraire le nom du jeu de {anonymize_path(file_path)}", e)
         return "Projet Inconnu"
 
-def log_temps_performance(fichier_path, extraction_time, reconstruction_time, nb_textes, nb_asterix=0, nb_empty=0):
-    """
-    Enregistre les temps de performance dans temps.txt organisé par projet
-    
-    Args:
-        fichier_path (str): Chemin du fichier traité
-        extraction_time (float): Temps d'extraction
-        reconstruction_time (float): Temps de reconstruction
-        nb_textes (int): Nombre de textes traités
-        nb_asterix (int): Nombre d'astérisques
-        nb_empty (int): Nombre de textes vides
-        
-    Returns:
-        bool: True si succès, False sinon
-    """
-    try:
-        total_time = extraction_time + reconstruction_time
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        filename = os.path.basename(fichier_path)
-        game_name = extract_game_name(fichier_path)
-        
-        # Préparer la ligne de log
-        log_line = f"[{timestamp}] {filename} | Extraction: {extraction_time:.2f}s | Reconstruction: {reconstruction_time:.2f}s | Total: {total_time:.2f}s | Textes: {nb_textes}"
-        
-        if nb_asterix > 0:
-            log_line += f" | Astérisques: {nb_asterix}"
-        if nb_empty > 0:
-            log_line += f" | Vides: {nb_empty}"
-        
-        # Lire le fichier existant
-        content_lines = []
-        if os.path.exists("temps.txt"):
-            try:
-                with open("temps.txt", 'r', encoding='utf-8') as f:
-                    content_lines = f.readlines()
-            except Exception as e:
-                log_message("WARNING", f"Erreur lecture fichier temps existant: {e}")
-                content_lines = []
-        
-        # Chercher si le projet existe déjà
-        project_header = f"=== {game_name} ==="
-        project_found = False
-        project_line_index = -1
-        
-        for i, line in enumerate(content_lines):
-            if line.strip() == project_header:
-                project_found = True
-                project_line_index = i
-                break
-        
-        if project_found:
-            # Ajouter à la fin de la section existante
-            insert_index = len(content_lines)
-            for i in range(project_line_index + 1, len(content_lines)):
-                line = content_lines[i].strip()
-                if line.startswith("===") or (line == "" and i + 1 < len(content_lines) and content_lines[i + 1].strip().startswith("===")):
-                    insert_index = i
-                    break
-            
-            # Insérer la nouvelle ligne
-            content_lines.insert(insert_index, log_line + "\n")
-        
-        else:
-            # Nouveau projet - ajouter à la fin
-            if content_lines and not content_lines[-1].endswith('\n'):
-                content_lines[-1] += '\n'
-            
-            if content_lines:  # Si le fichier n'est pas vide, ajouter une ligne vide avant
-                content_lines.append('\n')
-            
-            content_lines.append(project_header + '\n')
-            content_lines.append(log_line + '\n')
-        
-        # Écrire le fichier complet
-        with open("temps.txt", 'w', encoding='utf-8') as f:
-            f.writelines(content_lines)
-        
-        log_message("INFO", f"Temps enregistrés pour {game_name}: {total_time:.2f}s total")
-        return True
-        
-    except Exception as e:
-        log_message("ERREUR", f"Impossible d'enregistrer les temps de performance: {str(e)}", e)
-        return False
+# SUPPRIMÉ: log_temps_performance() - Plus nécessaire

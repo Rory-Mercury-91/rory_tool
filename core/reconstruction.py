@@ -11,7 +11,7 @@ import re
 import time
 import json
 from collections import OrderedDict
-from utils.logging import log_message, log_temps_performance
+from utils.logging import log_message
 from core.extraction import get_file_base_name
 
 class FileReconstructor:

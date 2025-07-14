@@ -16,7 +16,7 @@ import time
 import json
 import datetime
 import re
-import subprocess  # AJOUTÉ: Import manquant pour _open_folder
+import subprocess
 
 # Import Drag & Drop avec fallback
 try:
@@ -28,7 +28,7 @@ except ImportError:
 # Imports des modules de l'application
 from utils.constants import VERSION, THEMES, WINDOW_CONFIG, MESSAGES
 from utils.config import config_manager
-from utils.logging import log_message, log_temps_performance, anonymize_path
+from utils.logging import log_message, anonymize_path
 from core.extraction import TextExtractor
 from core.reconstruction import FileReconstructor
 from core.validation import validate_before_extraction, create_safety_backup, validate_before_reconstruction
@@ -52,78 +52,94 @@ class TraducteurRenPyPro:
     """Classe principale de l'application"""
     
     def __init__(self):
-            # CORRECTION : Nettoyer les fenêtres Tkinter existantes
-            import tkinter as tk
-            if tk._default_root:
-                try:
-                    tk._default_root.withdraw()  # Masquer les fenêtres parasites
-                    tk._default_root.quit()
-                    tk._default_root.destroy()
-                except:
-                    pass
-            
-            # NOUVEAU : Créer les dossiers organisés au démarrage
-            from utils.constants import ensure_folders_exist
-            ensure_folders_exist()
-            
-            # NOUVEAU : Créer LA fenêtre principale avec support Drag & Drop
+        print("🚀 Init appelé")
+
+        # 1. Nettoyer toute instance Tkinter existante
+        import tkinter as tk
+        if tk._default_root:
             try:
-                import tkinterdnd2 as dnd2
-                self.root = dnd2.Tk()  # Fenêtre avec support Drag & Drop
-                self.dnd_available = True
-                log_message("INFO", "Fenêtre créée avec support Drag & Drop")
-            except ImportError:
-                self.root = tk.Tk()  # Fenêtre normale si tkinterdnd2 pas disponible
-                self.dnd_available = False
-                log_message("INFO", "Fenêtre créée sans Drag & Drop (tkinterdnd2 non disponible)")
-            
-            # CORRECTION : Masquer pendant l'initialisation
-            self.root.withdraw()
-            
-            self.setup_window()
-            
-            # État de l'application
-            self.file_content = []
-            self.original_path = None
-            self.extraction_results = None
-            self.last_extraction_time = 0
-            self.last_reconstruction_time = 0
-            self._save_mode = None
-            
-            # Widgets (initialisation à None)
-            self.label_chemin = None
-            self.label_stats = None
-            self.text_area = None
-            self.bouton_auto_open = None
-            self.bouton_validation = None  # NOUVEAU : Référence bouton validation
-            self.bouton_theme = None
-            self.frame_info = None
-            self.title_label = None
-            self.subtitle_label = None
-            
-            # Créer l'interface
-            self.create_interface()
-            self.appliquer_theme()
-            
-            # NOUVEAU : Initialiser l'affichage Drag & Drop APRÈS que text_area existe
-            if hasattr(self, 'text_area') and self.text_area:
-                try:
-                    self._update_drag_drop_display()
-                    print("✅ DEBUG - Affichage initial Drag & Drop configuré")
-                except Exception as e:
-                    print(f"⚠️ DEBUG - Erreur affichage initial D&D: {e}")
-            
-            # CORRECTION : Réafficher la fenêtre une fois prête
-            self.root.deiconify()
-            
-            # Initialisation
-            self.center_window()
-            self.check_tutorial()
-            print(f"DEBUG - file_content au démarrage: {hasattr(self, 'file_content')}")
-            print(f"DEBUG - text_area au démarrage: {hasattr(self, 'text_area')}")
-            
-            log_message("INFO", f"=== DÉMARRAGE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
-            log_message("INFO", "Dossiers organisés créés: temporaire, sauvegardes, avertissements, logs")
+                tk._default_root.withdraw()
+                tk._default_root.quit()
+                tk._default_root.destroy()
+            except:
+                pass
+
+        # 2. Créer les dossiers et le fichier de log
+        from utils.constants import ensure_folders_exist
+        ensure_folders_exist()
+
+        from utils.logging import initialize_log
+        initialize_log()
+
+        # 3. Créer la fenêtre principale (avec DnD si possible)
+        try:
+            import tkinterdnd2 as dnd2
+            self.root = dnd2.Tk()
+            self.dnd_available = True
+            log_message("INFO", "Fenêtre créée avec support Drag & Drop")
+        except ImportError:
+            self.root = tk.Tk()
+            self.dnd_available = False
+            log_message("INFO", "Fenêtre créée sans Drag & Drop")
+
+        # 4. Masquer la fenêtre temporairement pendant l'initialisation
+        self.root.withdraw()
+
+        # 5. Configuration de la fenêtre (titre, minsize, icône, protocole fermeture)
+        self.setup_window()
+
+        # 6. Initialisation des variables d’état
+        self.file_content = []
+        self.original_path = None
+        self.extraction_results = None
+        self.last_extraction_time = 0
+        self.last_reconstruction_time = 0
+        self._save_mode = None
+
+        # 7. Initialisation des widgets (à None)
+        self.label_chemin = None
+        self.label_stats = None
+        self.text_area = None
+        self.bouton_auto_open = None
+        self.bouton_validation = None
+        self.bouton_theme = None
+        self.frame_info = None
+        self.title_label = None
+        self.subtitle_label = None
+
+        # 8. Création de l’interface
+        self.create_interface()
+
+        # 9. Application du thème
+        self.appliquer_theme()
+
+        # 10. Mise à jour Drag & Drop (si text_area prête)
+        if self.text_area:
+            try:
+                self._update_drag_drop_display()
+                print("✅ DEBUG - Affichage initial Drag & Drop configuré")
+            except Exception as e:
+                print(f"⚠️ DEBUG - Erreur affichage initial D&D: {e}")
+
+        # 11. Réafficher la fenêtre une fois prête
+        print("➡️ Avant deiconify")
+        self.root.deiconify()
+
+        # 12. Centrage de la fenêtre
+        print("➡️ Avant center_window")
+        self.center_window()
+
+        # 13. Vérification tutoriel premier lancement
+        print("➡️ Avant check_tutorial")
+        self.check_tutorial()
+
+        # 14. Logs et prints finaux
+        print(f"DEBUG - file_content au démarrage: {hasattr(self, 'file_content')}")
+        print(f"DEBUG - text_area au démarrage: {hasattr(self, 'text_area')}")
+
+        log_message("INFO", f"=== DÉMARRAGE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
+        log_message("INFO", "Dossiers organisés créés: temporaire, sauvegardes, avertissements, logs")
+
     
     def setup_window(self):
         """Configure la fenêtre principale"""
@@ -141,20 +157,22 @@ class TraducteurRenPyPro:
         self.root.protocol("WM_DELETE_WINDOW", self.fermer_application)
     
     def fermer_application(self):
-            """Gestion de la fermeture propre de l'application"""
+        """Gestion de la fermeture propre de l'application avec confirmation"""
+        if not messagebox.askokcancel("Quitter", "Voulez-vous vraiment quitter l'application ?"):
+            return  # L'utilisateur a annulé
+
+        try:
+            log_message("INFO", f"=== FERMETURE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
+            
             try:
-                log_message("INFO", f"=== FERMETURE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
-                
-                # Nettoyer les fichiers temporaires
-                try:
-                    TempFileManager.cleanup_temp_files()
-                except:
-                    pass
-                
-                self.root.destroy()
-            except Exception as e:
-                print(f"Erreur lors de la fermeture: {e}")
-                self.root.destroy()
+                TempFileManager.cleanup_temp_files()
+            except:
+                pass
+            
+            self.root.destroy()
+        except Exception as e:
+            print(f"Erreur lors de la fermeture: {e}")
+            self.root.destroy()
 
     def check_imports():
         """Vérifie que tous les modules nécessaires sont disponibles"""
@@ -185,48 +203,42 @@ class TraducteurRenPyPro:
     # =============================================================================
     
     def toggle_dark_mode(self):
-        """Bascule entre mode sombre et clair avec recréation complète de l'interface"""
-        new_mode = config_manager.toggle_dark_mode()
-        
-        # Sauvegarder l'état actuel
+        """Bascule entre mode sombre et clair avec recréation propre de l'interface"""
+
+        # 1. Met à jour la config (sans toucher au reste)
+        config_manager.toggle_dark_mode()
+
+        # 2. Sauvegarde de l'état
         current_file_content = self.file_content.copy() if self.file_content else []
         current_original_path = self.original_path
         current_extraction_results = self.extraction_results
         current_last_extraction_time = self.last_extraction_time
         current_last_reconstruction_time = self.last_reconstruction_time
         current_save_mode = self._save_mode
-        
-        # Détruire tous les widgets enfants
+
+        # 3. Détruire UNIQUEMENT les widgets de l'UI
         for widget in self.root.winfo_children():
             widget.destroy()
-        
-        # Recréer complètement l'interface
+
+        # 4. Recréer l’interface graphique
         self.create_interface()
-        
-        # Restaurer l'état
+        self.appliquer_theme()
+
+        # 5. Restaurer l'état
         self.file_content = current_file_content
         self.original_path = current_original_path
         self.extraction_results = current_extraction_results
         self.last_extraction_time = current_last_extraction_time
         self.last_reconstruction_time = current_last_reconstruction_time
         self._save_mode = current_save_mode
-        
-        # Restaurer l'affichage si un fichier était chargé
+
+        # 6. Restaurer l'affichage si un fichier était chargé
         if self.original_path and self.file_content:
             self.label_chemin.config(text=f"📄 {self.original_path}")
             self.text_area.delete('1.0', tk.END)
             self.text_area.insert(tk.END, ''.join(self.file_content))
             line_count = len(self.file_content)
             self.label_stats.config(text=f"📊 {line_count} lignes chargées")
-        
-        # Appliquer le nouveau thème
-        self.appliquer_theme()
-    
-    def toggle_auto_open(self):
-        """Bascule l'option d'ouverture automatique"""
-        new_state = config_manager.toggle_auto_open()
-        if self.bouton_auto_open:
-            self.bouton_auto_open.config(text=f"📂 Auto : {'ON' if new_state else 'OFF'}")
     
     # =============================================================================
     # CRÉATION DE L'INTERFACE
@@ -277,7 +289,7 @@ class TraducteurRenPyPro:
         )
         self.subtitle_label.pack(side='left', padx=(20, 0))
         
-        # Bouton thème
+        # 🔁 Bouton thème à gauche
         self.bouton_theme = tk.Button(
             frame_header, 
             text="☀️ Mode Clair" if config_manager.is_dark_mode_enabled() else "🌙 Mode Sombre",
@@ -291,7 +303,23 @@ class TraducteurRenPyPro:
             padx=10,
             command=self.toggle_dark_mode
         )
-        self.bouton_theme.pack(side='right')
+        self.bouton_theme.pack(side='left', padx=10)
+
+        # ➕ Bouton Quitter à droite
+        self.bouton_quitter = tk.Button(
+            frame_header,
+            text="❌ Quitter",
+            font=('Segoe UI', 10),
+            bg='#dc3545',
+            fg='#ffffff',
+            activebackground='#c82333',
+            bd=1,
+            relief='solid',
+            pady=8,
+            padx=10,
+            command=self.fermer_application
+        )
+        self.bouton_quitter.pack(side='right', padx=5)
     
     def create_info_frame(self):
         """Crée le frame d'informations"""
@@ -393,89 +421,103 @@ class TraducteurRenPyPro:
         btn_reinit.grid(row=0, column=3, sticky="nsew", padx=5, pady=8)
     
     def create_actions_frame(self):
-            """Crée le frame des actions principales"""
-            theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
-            
-            frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
-            frame_actions.pack(padx=20, pady=5)
-            
-            # 8 colonnes : 3 boutons verts + 5 utilitaires (AVEC le bouton Avertissements, SANS séparateur)
-            for col in range(8):
-                frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
-            
-            # Boutons verts principaux
-            btn_extraire = tk.Button(
+        """Crée le frame des actions principales"""
+        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+        
+        frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
+        frame_actions.pack(padx=20, pady=5)
+        
+        # 8 colonnes : 3 boutons verts + 5 utilitaires
+        for col in range(8):
+            frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
+        
+        # Boutons verts principaux
+        btn_extraire = tk.Button(
+            frame_actions,
+            text="⚡ Extraire",
+            font=('Segoe UI', 11),
+            bg='#28a745',
+            fg='#000000',
+            activebackground='#1e7e34',
+            bd=1,
+            relief='solid',
+            command=self.extraire_textes
+        )
+        btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
+
+        btn_extract_todo = tk.Button(
+            frame_actions,
+            text="⚡ TODO",
+            font=('Segoe UI', 11),
+            bg='#ff8c00',
+            fg='#000000',
+            activebackground='#e07b00',
+            bd=1,
+            relief='solid',
+            command=self.extraire_textes_avec_selector
+        )
+        btn_extract_todo.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
+
+        btn_reconstruire = tk.Button(
+            frame_actions,
+            text="🔧 Reconstruire",
+            font=('Segoe UI', 11),
+            bg='#28a745',
+            fg='#000000',
+            activebackground='#1e7e34',
+            bd=1,
+            relief='solid',
+            command=self.reconstruire_fichier
+        )
+        btn_reconstruire.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
+
+        # Utilitaires (colonnes 3 à 7)
+        utilitaires = [
+            ("🧹 Nettoyer",       self.nettoyer_page, '#ffc107'),
+            ("📁 Temporaire",     self.ouvrir_dossier_temporaire, '#ffc107'),
+            ("⚠️ Avertissements", self.ouvrir_avertissements, '#dc3545'),
+            (
+                f"📂 Auto : {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}",
+                self.handle_toggle_auto_open, '#ffc107'
+            ),
+            (
+                f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}",
+                self.toggle_validation, '#ffc107'
+            )
+        ]
+        
+        for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
+            btn = tk.Button(
                 frame_actions,
-                text="⚡ Extraire",
-                font=('Segoe UI', 11),
-                bg='#28a745',
+                text=txt,
+                font=('Segoe UI', 10),
+                bg=couleur,
                 fg='#000000',
-                activebackground='#1e7e34',
+                activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37',
                 bd=1,
                 relief='solid',
-                command=self.extraire_textes
+                command=cmd
             )
-            btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
+            btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
+            
+            if cmd == self.handle_toggle_auto_open:
+                self.bouton_auto_open = btn
+            elif cmd == self.toggle_validation:
+                self.bouton_validation = btn
 
-            btn_extract_todo = tk.Button(
-                frame_actions,
-                text="⚡ TODO",
-                font=('Segoe UI', 11),
-                bg='#ff8c00',
-                fg='#000000',
-                activebackground='#e07b00',
-                bd=1,
-                relief='solid',
-                command=self.extraire_textes_avec_selector
-            )
-            btn_extract_todo.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
-
-            btn_reconstruire = tk.Button(
-                frame_actions,
-                text="🔧 Reconstruire",
-                font=('Segoe UI', 11),
-                bg='#28a745',
-                fg='#000000',
-                activebackground='#1e7e34',
-                bd=1,
-                relief='solid',
-                command=self.reconstruire_fichier
-            )
-            btn_reconstruire.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
-
-            # Utilitaires (colonnes 3 à 7) - AVEC le bouton Avertissements
-            utilitaires = [
-                ("🧹 Nettoyer",     self.nettoyer_page, '#ffc107'),
-                ("⏱️ Temps",        self.ouvrir_log_temps, '#ffc107'),
-                ("⚠️ Avertissements", self.ouvrir_avertissements, '#dc3545'),  # Bouton rouge
-                (
-                    f"📂 Auto: {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}",
-                    self.toggle_auto_open, '#ffc107'
-                ),
-                (
-                    f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}",
-                    self.toggle_validation, '#ffc107'
+    def handle_toggle_auto_open(self):
+        """Callback pour basculer l'option Auto-Ouverture et mettre à jour le bouton"""
+        try:
+            new_value = config_manager.toggle_auto_open()
+            if self.bouton_auto_open:
+                self.bouton_auto_open.config(
+                    text=f"📂 Auto : {'ON' if new_value else 'OFF'}"
                 )
-            ]
-            
-            for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
-                btn = tk.Button(
-                    frame_actions,
-                    text=txt,
-                    font=('Segoe UI', 10),
-                    bg=couleur,
-                    fg='#000000',
-                    activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37',
-                    bd=1,
-                    relief='solid',
-                    command=cmd
-                )
-                btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
-                if cmd == self.toggle_auto_open:
-                    self.bouton_auto_open = btn
-                elif cmd == self.toggle_validation:
-                    self.bouton_validation = btn
-    
+            log_message("INFO", f"Auto-Ouverture {'activée' if new_value else 'désactivée'} par l’utilisateur")
+        except Exception as e:
+            print(f"⚠️ Erreur lors du basculement Auto-Ouverture : {e}")
+
+
     def create_content_frame(self):
         """Crée la zone de contenu principal avec support Drag & Drop"""
         theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
@@ -541,37 +583,29 @@ class TraducteurRenPyPro:
         """Applique le thème sombre ou clair"""
         theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
         
-        # Appliquer le thème à la fenêtre principale
         self.root.configure(bg=theme["bg"])
-        
-        # Mise à jour des couleurs des widgets principaux
+
+        # Mettre à jour les principaux widgets
         widgets_to_update = [
             (self.title_label, theme["bg"], theme["fg"]),
             (self.subtitle_label, theme["bg"], theme["fg"]),
             (self.label_chemin, theme["frame_bg"], theme["accent"]),
             (self.label_stats, theme["frame_bg"], theme["fg"])
         ]
-        
+
         for widget, bg_color, fg_color in widgets_to_update:
             if widget:
                 try:
                     widget.configure(bg=bg_color, fg=fg_color)
                 except:
                     pass
-        
-        # Appliquer au frame_info
+
         if self.frame_info:
             self.frame_info.configure(bg=theme["frame_bg"])
-        
-        # CORRECTION : Appliquer à la zone de texte avec bordure adaptative
+
+        # Zone de texte avec bordure
         if self.text_area:
-            if config_manager.is_dark_mode_enabled():
-                # Mode sombre : bordure subtile
-                border_color = '#555555'
-            else:
-                # Mode clair : bordure plus visible et adaptée aux nouvelles couleurs
-                border_color = '#d0d0d0'  # ← CHANGEMENT ICI : Plus visible que #cccccc
-            
+            border_color = '#555555' if config_manager.is_dark_mode_enabled() else '#d0d0d0'
             self.text_area.configure(
                 bg=theme["entry_bg"],
                 fg=theme["entry_fg"],
@@ -580,9 +614,9 @@ class TraducteurRenPyPro:
                 insertbackground=theme["entry_fg"],
                 highlightthickness=1,
                 highlightbackground=border_color,
-                highlightcolor=theme["accent"]  # Couleur verte quand focus
+                highlightcolor=theme["accent"]
             )
-        
+
         # Mettre à jour le bouton thème
         if self.bouton_theme:
             self.bouton_theme.configure(
@@ -590,21 +624,34 @@ class TraducteurRenPyPro:
                 bg='#ffc107',
                 fg='#000000'
             )
-        
+
         # Mettre à jour le bouton auto-ouverture
         if self.bouton_auto_open:
             self.bouton_auto_open.configure(
-                text="📂 Auto : ON" if config_manager.is_auto_open_enabled() else "📂 Auto : OFF",
+                text=f"📂 Auto : {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}",
                 bg='#ffc107',
                 fg='#000000'
             )
     
     def center_window(self):
         """Centre la fenêtre sur l'écran"""
-        self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (self.root.winfo_width() // 2)
-        y = (self.root.winfo_screenheight() // 2) - (self.root.winfo_height() // 2)
-        self.root.geometry(f"+{x}+{y}")
+        try:
+            self.root.update_idletasks()
+
+            width = self.root.winfo_width()
+            height = self.root.winfo_height()
+
+            # Fallback si width/height trop petits
+            if width < 100 or height < 100:
+                width, height = 1100, 700  # Valeur par défaut
+
+            x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+            y = (self.root.winfo_screenheight() // 2) - (height // 2)
+
+            self.root.geometry(f"{width}x{height}+{x}+{y}")
+            print(f"✅ Fenêtre centrée à {x},{y} avec taille {width}x{height}")
+        except Exception as e:
+            print(f"❌ Erreur dans center_window: {e}")
     
     def check_tutorial(self):
         """Vérifie si le tutoriel doit être affiché"""
@@ -720,217 +767,115 @@ class TraducteurRenPyPro:
         """Configure le support du Drag & Drop - Version unifiée et fonctionnelle"""
         if not DND_AVAILABLE:
             log_message("INFO", "Drag & Drop non disponible")
-            self._setup_keyboard_shortcuts()
             return
-        
+
         try:
-            # Configurer la zone de texte comme drop target
             self.text_area.drop_target_register(dnd2.DND_FILES)
-            
+
             def on_drop(event):
                 try:
-                    # Récupérer les données brutes
                     raw_data = event.data
                     print(f"🔍 DEBUG - Données brutes: '{raw_data}'")
-                    
                     file_paths = []
-                    
-                    # Méthode 1 : Reconstruction intelligente pour chemins Windows
+
+                    # Méthode 1 : Reconstruction intelligente (espaces, lecteurs, Users, séparateurs)
                     try:
                         split_parts = self.root.tk.splitlist(raw_data)
                         print(f"🔍 DEBUG - Parties divisées: {split_parts}")
-                        
-                        if len(split_parts) == 1:
-                            # Pas de division
-                            file_paths = split_parts
-                            print(f"✅ DEBUG - Aucune division détectée")
-                        else:
-                            # STRATÉGIE SPÉCIALE pour les chemins Windows avec espaces
-                            print(f"🔧 DEBUG - Reconstruction pour {len(split_parts)} parties")
-                            
-                            # Stratégie 1: Reconstruire avec espaces (le plus courant)
-                            reconstructed_space = " ".join(split_parts)
-                            print(f"🔧 DEBUG - Test avec espaces: '{reconstructed_space}'")
-                            if os.path.exists(reconstructed_space):
-                                file_paths = [reconstructed_space]
-                                print(f"✅ DEBUG - Succès avec espaces!")
-                            
-                            # Stratégie 2: Si ça commence par C:\ ou D:\, reconstruction intelligente
-                            if not file_paths:
-                                import re
-                                # Trouver la partie qui ressemble à un disque
-                                drive_found = False
-                                for i, part in enumerate(split_parts):
-                                    if re.match(r'^[A-Z]:', part) or ':\\' in part:
-                                        # Reconstruire à partir de ce point
-                                        if ':\\' not in part:
-                                            # Ajouter le :\ si manquant
-                                            parts_to_join = [part + ':\\'] + split_parts[i+1:]
-                                        else:
-                                            parts_to_join = split_parts[i:]
-                                        
-                                        reconstructed = " ".join(parts_to_join)
-                                        print(f"🔧 DEBUG - Reconstruction drive à partir de {i}: '{reconstructed}'")
-                                        
-                                        if os.path.exists(reconstructed):
-                                            file_paths = [reconstructed]
-                                            print(f"✅ DEBUG - Succès avec reconstruction drive!")
-                                            drive_found = True
-                                            break
-                                
-                                # Stratégie 3: Gestion spéciale pour C:\Users\
-                                if not file_paths and not drive_found:
-                                    # Détecter les patterns Users
-                                    users_patterns = [
-                                        'C:\\Users\\',
-                                        'C:/Users/',
-                                        'Users\\',
-                                        'Users/'
-                                    ]
-                                    
-                                    for pattern in users_patterns:
-                                        joined = " ".join(split_parts)
-                                        if pattern.lower() in joined.lower():
-                                            print(f"🔧 DEBUG - Pattern Users détecté dans: '{joined}'")
-                                            
-                                            # Essayer de reconstruire le chemin Users
-                                            if os.path.exists(joined):
-                                                file_paths = [joined]
-                                                print(f"✅ DEBUG - Succès avec pattern Users!")
-                                                break
-                            
-                            # Stratégie 4: Autres séparateurs si les espaces ne marchent pas
-                            if not file_paths:
-                                separators = ['_', '-', '.', '\\']
-                                for sep in separators:
-                                    reconstructed = sep.join(split_parts)
-                                    print(f"🔧 DEBUG - Test séparateur '{sep}': '{reconstructed}'")
-                                    if os.path.exists(reconstructed):
-                                        file_paths = [reconstructed]
-                                        print(f"✅ DEBUG - Succès avec séparateur '{sep}'!")
-                                        break
-                    
+                        joined = " ".join(split_parts)
+
+                        # Tentative directe
+                        if len(split_parts) == 1 and os.path.exists(split_parts[0]):
+                            file_paths = [split_parts[0]]
+                            print("✅ DEBUG - Chemin direct valide")
+                        elif os.path.exists(joined):
+                            file_paths = [joined]
+                            print("✅ DEBUG - Succès avec espaces")
+
+                        # Autres stratégies
+                        if not file_paths:
+                            for sep in [' ', '_', '-', '.', '\\']:
+                                attempt = sep.join(split_parts)
+                                print(f"🔧 DEBUG - Test séparateur '{sep}': '{attempt}'")
+                                if os.path.exists(attempt):
+                                    file_paths = [attempt]
+                                    print(f"✅ DEBUG - Succès avec séparateur '{sep}'")
+                                    break
+
                     except Exception as e:
-                        print(f"⚠️ DEBUG - Erreur dans reconstruction: {e}")
-                    
-                    # Méthode 2: Regex pour détecter les chemins Windows complets
-                    if not file_paths or not any(os.path.exists(p) for p in file_paths):
-                        print(f"🔧 DEBUG - Tentative regex sur: '{raw_data}'")
-                        
+                        print(f"⚠️ DEBUG - Erreur reconstruction: {e}")
+
+                    # Méthode 2 : Regex Windows
+                    if not file_paths:
                         import re
-                        # Patterns spécialement adaptés pour Windows
                         patterns = [
-                            r'[A-Z]:\\Users\\[^<>:"|?*\n\r]*',           # C:\Users\...
-                            r'[A-Z]:\\[^<>:"|?*\n\r]*\.rpy',             # Tout chemin vers .rpy
-                            r'[A-Z]:\\[^<>:"|?*\n\r]*',                  # N'importe quel chemin Windows
+                            r'[A-Z]:\\Users\\[^<>:"|?*\n\r]*',
+                            r'[A-Z]:\\[^<>:"|?*\n\r]*\.rpy',
+                            r'[A-Z]:\\[^<>:"|?*\n\r]*',
                         ]
-                        
                         for pattern in patterns:
                             matches = re.findall(pattern, raw_data, re.IGNORECASE)
                             if matches:
-                                print(f"🔧 DEBUG - Regex trouvé avec '{pattern}': {matches}")
-                                # Prendre le plus long match (probablement le plus complet)
-                                longest_match = max(matches, key=len)
-                                if os.path.exists(longest_match):
-                                    file_paths = [longest_match]
-                                    print(f"✅ DEBUG - Match regex valide!")
+                                longest = max(matches, key=len)
+                                if os.path.exists(longest):
+                                    file_paths = [longest]
+                                    print("✅ DEBUG - Regex valide")
                                     break
-                    
-                    # Méthode 3: Fallback avec nettoyage avancé
+
+                    # Méthode 3 : Fallback nettoyage
                     if not file_paths:
                         cleaned = self._advanced_path_clean(raw_data)
-                        print(f"🔧 DEBUG - Fallback nettoyage avancé: '{cleaned}'")
+                        print(f"🔧 DEBUG - Fallback nettoyage: '{cleaned}'")
                         if os.path.exists(cleaned):
                             file_paths = [cleaned]
-                            print(f"✅ DEBUG - Succès avec nettoyage avancé!")
+                            print("✅ DEBUG - Nettoyage avancé OK")
                         else:
-                            file_paths = [cleaned]  # On essaiera quand même
-                    
-                    # Traiter le meilleur chemin trouvé
-                    for file_path in file_paths:
-                        final_path = self._clean_file_path(file_path)
+                            file_paths = [cleaned]
+
+                    # Traitement final
+                    for path in file_paths:
+                        final_path = self._clean_file_path(path)
                         print(f"🧹 DEBUG - Chemin final: '{final_path}'")
-                        
                         exists = os.path.exists(final_path)
                         is_rpy = final_path.lower().endswith('.rpy')
-                        
-                        print(f"🔍 DEBUG - Existe: {exists}, .rpy: {is_rpy}")
-                        
+
                         if exists and is_rpy:
-                            print(f"🎉 DEBUG - FICHIER VALIDE TROUVÉ!")
+                            print("🎉 DEBUG - FICHIER VALIDE TROUVÉ !")
                             self._handle_dropped_file(final_path)
                             return dnd2.COPY
-                        elif exists:
-                            print(f"📁 DEBUG - Dossier valide, mais pas de fichier .rpy")
-                            # Si c'est un dossier, on pourrait proposer de l'ouvrir
-                            if os.path.isdir(final_path):
-                                result = messagebox.askyesno(
-                                    "📁 Dossier détecté",
-                                    f"Vous avez glissé un dossier :\n{os.path.basename(final_path)}\n\n"
-                                    f"Voulez-vous ouvrir ce dossier en mode dossier ?"
-                                )
-                                if result:
-                                    # Simuler l'ouverture de dossier
-                                    self.ouvrir_dossier_direct(final_path)
-                                    return dnd2.COPY
-                    
-                    # Aucun fichier/dossier valide
+                        elif exists and os.path.isdir(final_path):
+                            if messagebox.askyesno("📁 Dossier détecté", f"Ouvrir le dossier {os.path.basename(final_path)} ?"):
+                                self.ouvrir_dossier_direct(final_path)
+                                return dnd2.COPY
+
                     messagebox.showerror(
                         "❌ Drag & Drop impossible",
-                        f"Impossible de traiter l'élément glissé.\n\n"
-                        f"Données reçues: {raw_data[:100]}{'...' if len(raw_data) > 100 else ''}\n\n"
-                        f"💡 Problème probable:\n"
-                        f"• Nom d'utilisateur Windows avec espaces\n"
-                        f"• Chemin trop complexe pour tkinterdnd2\n\n"
-                        f"🔧 Solutions:\n"
-                        f"• Utilisez le bouton 'Ouvrir Fichier'\n"
-                        f"• Ou copiez le fichier dans un dossier plus simple"
+                        f"Impossible de traiter l'élément glissé :\n\n{raw_data[:100]}{'...' if len(raw_data) > 100 else ''}\n\n"
+                        f"💡 Essayez :\n• Bouton 'Ouvrir Fichier'\n• Chemin plus simple"
                     )
-                    
                     return dnd2.COPY
-                    
+
                 except Exception as e:
-                    print(f"💥 DEBUG - Erreur critique: {str(e)}")
-                    log_message("ERREUR", f"Erreur Drag & Drop: {str(e)}", e)
+                    print(f"💥 DEBUG - Erreur critique: {e}")
+                    log_message("ERREUR", f"Erreur Drag & Drop: {e}", e)
                     return dnd2.COPY
-            
+
             def on_drag_enter(event):
-                theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
                 self.text_area.configure(highlightbackground='#28a745', highlightthickness=3)
                 return dnd2.COPY
-            
+
             def on_drag_leave(event):
-                theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
                 border_color = '#555555' if config_manager.is_dark_mode_enabled() else '#d0d0d0'
                 self.text_area.configure(highlightbackground=border_color, highlightthickness=1)
-            
+
             self.text_area.dnd_bind('<<Drop>>', on_drop)
             self.text_area.dnd_bind('<<DragEnter>>', on_drag_enter)
             self.text_area.dnd_bind('<<DragLeave>>', on_drag_leave)
-            
-            log_message("INFO", "Drag & Drop configuré pour chemins utilisateur Windows")
-            
-        except Exception as e:
-            log_message("WARNING", f"Erreur configuration Drag & Drop: {str(e)}")
-            self._setup_keyboard_shortcuts()
 
-    def _setup_keyboard_shortcuts(self):
-        """Configure des raccourcis clavier en complément ou alternative au Drag & Drop"""
-        try:
-            # Raccourcis utiles même avec Drag & Drop
-            self.root.bind('<Control-o>', lambda e: self.ouvrir_fichier_unique())
-            self.root.bind('<Control-O>', lambda e: self.ouvrir_fichier_unique())
-            self.root.bind('<Control-d>', lambda e: self.ouvrir_dossier())
-            self.root.bind('<Control-D>', lambda e: self.ouvrir_dossier())
-            
-            # Clic sur zone vide si pas de Drag & Drop
-            if not DND_AVAILABLE:
-                self.text_area.bind('<Button-1>', self._on_text_click)
-            
-            log_message("INFO", "Raccourcis clavier configurés: Ctrl+O (fichier), Ctrl+D (dossier)")
-            
+            log_message("INFO", "Drag & Drop configuré avec succès")
+
         except Exception as e:
-            log_message("WARNING", f"Configuration des raccourcis échouée: {str(e)}")
+            log_message("WARNING", f"Erreur configuration Drag & Drop: {e}")
 
     def _on_text_click(self, event):
         """Gère les clics sur la zone de texte (si vide, propose d'ouvrir un fichier)"""
@@ -1078,28 +1023,27 @@ class TraducteurRenPyPro:
 
 
 
-                    🎯 Glissez un fichier .rpy ici
+                                🎯 Glissez un fichier .rpy ici
 
-                    ou utilisez Ctrl+O / boutons ci-dessus
-                        pour commencer la traduction
+                                    ou utilisez les boutons ci-dessus
+                                    pour commencer la traduction
 
 
 
-    """
+                """
                 else:
                     invitation_text = """
 
 
 
-                    🎯 Cliquez ici ou utilisez Ctrl+O
+                                🎯 Cliquez sur un bouton ci-dessus
 
-                        pour ouvrir un fichier .rpy
-                        et commencer la traduction
+                                    pour ouvrir un fichier .rpy
+                                    et commencer la traduction
 
 
 
-    """
-                
+                """
                 # Insérer le message
                 self.text_area.insert(tk.END, invitation_text)
                 
@@ -1430,19 +1374,24 @@ class TraducteurRenPyPro:
                             
                             # Si Non, on continue simplement sans rien faire
                     
-                    # AJOUT : Log des temps de performance
+                    # Logger la performance dans le log général
                     if hasattr(self, 'last_extractor') and self.last_extractor:
                         try:
-                            log_temps_performance(
-                                self.original_path,
-                                self.last_extraction_time,
-                                self.last_reconstruction_time,
-                                self.last_extractor.extracted_count,
-                                self.last_extractor.asterix_count,
-                                self.last_extractor.empty_count
+                            from utils.logging import log_performance
+                            log_performance(
+                                "Traitement complet",
+                                os.path.basename(self.original_path),
+                                self.last_extraction_time + self.last_reconstruction_time,
+                                {
+                                    "extraction": f"{self.last_extraction_time:.2f}s",
+                                    "reconstruction": f"{self.last_reconstruction_time:.2f}s",
+                                    "textes": self.last_extractor.extracted_count,
+                                    "asterisques": self.last_extractor.asterix_count,
+                                    "vides": self.last_extractor.empty_count
+                                }
                             )
-                        except Exception as log_error:
-                            log_message("WARNING", "Impossible d'enregistrer les temps", log_error)
+                        except Exception as e:
+                            log_message("WARNING", "Impossible de logger la performance", e)
                     
                     # Messages de succès
                     success_msg = MESSAGES["reconstruction_success"].format(time=self.last_reconstruction_time)
@@ -1933,6 +1882,46 @@ class TraducteurRenPyPro:
             "📄 Le fichier actuel reste chargé."
         )
     
+    def ouvrir_dossier_temporaire(self):
+        """Ouvre le dossier temporaire du jeu en cours"""
+        try:
+            if not self.original_path:
+                messagebox.showinfo(
+                    "📁 Dossier temporaire",
+                    "Aucun fichier n'est chargé.\n\n"
+                    "Chargez d'abord un fichier pour accéder à son dossier temporaire."
+                )
+                return
+            
+            # Extraire le nom du jeu
+            from utils.logging import extract_game_name
+            game_name = extract_game_name(self.original_path)
+            
+            # Construire le chemin du dossier temporaire
+            temp_base = "temporaires"
+            game_folder = os.path.join(temp_base, game_name)
+            
+            if not os.path.exists(game_folder):
+                result = messagebox.askyesno(
+                    "📁 Dossier temporaire",
+                    f"Le dossier temporaire pour '{game_name}' n'existe pas encore.\n\n"
+                    f"Il sera créé lors de l'extraction.\n\n"
+                    f"Voulez-vous créer le dossier maintenant ?"
+                )
+                if result:
+                    os.makedirs(game_folder, exist_ok=True)
+                    os.makedirs(os.path.join(game_folder, "fichiers_a_traduire"), exist_ok=True)
+                    os.makedirs(os.path.join(game_folder, "fichiers_a_ne_pas_traduire"), exist_ok=True)
+                else:
+                    return
+            
+            # Ouvrir le dossier
+            self._open_folder(game_folder)
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur ouverture dossier temporaire", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le dossier temporaire:\n{str(e)}")
+
     def nettoyer_page(self):
         """Nettoie la page actuelle"""
         if self.last_extraction_time > 0 or self.last_reconstruction_time > 0:
@@ -1966,35 +1955,6 @@ class TraducteurRenPyPro:
         
         messagebox.showinfo("🧹 Nettoyage", "Page nettoyée.")
     
-    def ouvrir_log_temps(self):
-            """Ouvre le fichier temps.txt s'il existe"""
-            if os.path.exists('temps.txt'):
-                try:
-                    FileOpener.open_files(['temps.txt'])
-                except Exception as e:
-                    messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir temps.txt:\n{str(e)}")
-            else:
-                messagebox.showinfo("📊 Log des temps", "Aucun fichier temps.txt trouvé.\nTraitez d'abord un fichier pour générer l'historique.")
-            
-    def _refresh_temps_content(self, text_area, temps_file):
-        """Actualise le contenu du fichier temps affiché"""
-        try:
-            with open(temps_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            text_area.configure(state='normal')
-            text_area.delete('1.0', tk.END)
-            
-            if content.strip():
-                text_area.insert('1.0', content)
-            else:
-                text_area.insert('1.0', "Le fichier temps.txt est vide.\n\nTraitez des fichiers pour voir l'historique apparaître ici.")
-            
-            text_area.configure(state='disabled')
-            
-        except Exception as e:
-            messagebox.showerror("❌ Erreur", f"Impossible d'actualiser {temps_file}:\n{str(e)}")
-
     def update_window_title(self, remaining_files=None):
             """Met à jour le titre de la fenêtre"""
             base_title = WINDOW_CONFIG["title"]
@@ -2005,8 +1965,12 @@ class TraducteurRenPyPro:
                 self.root.title(base_title)
     
     def run(self):
-        """Lance l'application"""
-        self.root.mainloop()
+        """Lance la boucle principale de l'application"""
+        print("🌀 Lancement de mainloop()")
+        try:
+            self.root.mainloop()
+        except KeyboardInterrupt:
+            print("🛑 Fermeture manuelle (Ctrl+C)")
 
 class TodoSelectorDialog:
     """Dialogue pour sélectionner à partir de quelle date TODO extraire"""
@@ -2314,39 +2278,10 @@ class TodoSelectorDialog:
 # =============================================================================
 
 def main():
-    """Point d'entrée principal de l'application"""
-    try:
-        # CORRECTION : Nettoyer toute instance Tkinter existante
-        import tkinter as tk
-        if tk._default_root:
-            try:
-                tk._default_root.withdraw()
-                tk._default_root.quit() 
-                tk._default_root.destroy()
-            except:
-                pass
-        
-        # Créer et lancer l'application
-        app = TraducteurRenPyPro()
-        app.run()
-        
-    except Exception as e:
-        # Gestion d'erreur de dernier recours
-        import traceback
-        error_msg = f"Erreur critique au démarrage:\n{str(e)}\n\n{traceback.format_exc()}"
-        
-        try:
-            log_message("ERREUR", f"Erreur critique au démarrage: {str(e)}")
-        except:
-            pass
-        
-        try:
-            import tkinter.messagebox as msgbox
-            msgbox.showerror("❌ Erreur critique", error_msg)
-        except:
-            print(error_msg)
-        
-        sys.exit(1)
+    print("🎬 Lancement de main()")
+    app = TraducteurRenPyPro()
+    print("✅ Classe instanciée")
+    app.run()
 
 if __name__ == "__main__":
     try:

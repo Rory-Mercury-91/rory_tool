@@ -13,7 +13,7 @@ VERSION = "1.5.0"
 
 # Dossiers d'organisation
 FOLDERS = {
-    "temp": "temporaire",
+    "temp": "temporaires",
     "backup": "sauvegardes",
     "warnings": "avertissements",
     "logs": "logs"
@@ -115,7 +115,6 @@ DEFAULT_CONFIG = {
 FILE_NAMES = {
     "config": "config.json",
     "log": os.path.join(FOLDERS["logs"], "log.txt"),
-    "temps": "temps.txt",  # Reste à la racine pour facilité d'accès
     "tutorial_flag": "tutorial_shown.flag"
 }
 
