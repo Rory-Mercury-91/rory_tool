@@ -28,147 +28,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller tkinterdnd2
     
-    - name: Create version info and documentation
-      run: |
-        # Créer le fichier de version pour Windows
-        $versionInfo = @"
-        VSVersionInfo(
-          ffi=FixedFileInfo(
-            filevers=(1, 1, 0, 0),
-            prodvers=(1, 1, 0, 0),
-            mask=0x3f,
-            flags=0x0,
-            OS=0x40004,
-            fileType=0x1,
-            subtype=0x0,
-            date=(0, 0)
-          ),
-          kids=[
-            StringFileInfo([
-              StringTable('040904B0', [
-                StringStruct('CompanyName', 'Traducteur RenPy Pro'),
-                StringStruct('FileDescription', 'Outil de traduction pour scripts Ren Py'),
-                StringStruct('FileVersion', '1.1.0'),
-                StringStruct('LegalCopyright', 'Open Source - GitHub'),
-                StringStruct('OriginalFilename', 'TraducteurRenPyPro.exe'),
-                StringStruct('ProductName', 'Traducteur RenPy Pro'),
-                StringStruct('ProductVersion', '1.1.0')
-              ])
-            ]),
-            VarFileInfo([VarStruct('Translation', [1033, 1252])])
-          ]
-        )
-        "@
-        $versionInfo | Out-File -FilePath "version_info.py" -Encoding UTF8
-    
     - name: Build Windows executable
       run: |
-        pyinstaller main.py ^
-          --name="TraducteurRenPyPro" ^
-          --onefile ^
-          --windowed ^
-          --noconfirm ^
-          --clean ^
-          --version-file=version_info.py ^
-          --hidden-import=tkinterdnd2 ^
-          --hidden-import=utils.constants ^
-          --hidden-import=utils.config ^
-          --hidden-import=utils.logging ^
-          --hidden-import=core.extraction ^
-          --hidden-import=core.reconstruction ^
-          --hidden-import=core.validation ^
-          --hidden-import=core.file_manager ^
-          --hidden-import=core.coherence_checker ^
-          --hidden-import=ui.backup_manager ^
-          --hidden-import=ui.interface ^
-          --hidden-import=ui.tutorial ^
-          --add-data="utils;utils" ^
-          --add-data="core;core" ^
-          --add-data="ui;ui" ^
-          --exclude-module=matplotlib ^
-          --exclude-module=numpy ^
-          --exclude-module=scipy ^
-          --exclude-module=pandas
+        pyinstaller main.py --name="TraducteurRenPyPro" --onefile --windowed --noconfirm --clean --hidden-import=tkinterdnd2 --hidden-import=utils.constants --hidden-import=utils.config --hidden-import=utils.logging --hidden-import=core.extraction --hidden-import=core.reconstruction --hidden-import=core.validation --hidden-import=core.file_manager --hidden-import=core.coherence_checker --hidden-import=ui.backup_manager --hidden-import=ui.interface --hidden-import=ui.tutorial --add-data="utils;utils" --add-data="core;core" --add-data="ui;ui"
     
-    - name: Create comprehensive Windows package
+    - name: Create Windows archive
       run: |
         cd dist
-        
-        # Créer documentation antivirus
-        $antivirusDoc = @"
-        =======================================
-         TRADUCTEUR REN'PY PRO - FAUX POSITIF
-        =======================================
-        
-        🛡️ VOTRE ANTIVIRUS PEUT BLOQUER CE FICHIER
-        
-        C'est un FAUX POSITIF très courant avec:
-        - Les logiciels Python compilés
-        - Les fichiers .exe non signés
-        - Les outils qui manipulent des fichiers
-        
-        ✅ SOLUTIONS:
-        1. Ajouter une exclusion antivirus pour ce dossier
-        2. Vérifier sur VirusTotal.com (lien dans GitHub)
-        3. Code source 100% ouvert sur GitHub
-        4. Aucune connexion internet requise
-        
-        🔗 Plus d'infos: https://github.com/Rory-Mercury-91/rory_tool
-        
-        Généré automatiquement le: $(Get-Date)
-        "@
-        $antivirusDoc | Out-File -FilePath "LISEZMOI_ANTIVIRUS.txt" -Encoding UTF8
-        
-        # Créer script de lancement
-        $launcher = @"
-        @echo off
-        title Traducteur Ren'Py Pro v1.1.0
-        cls
-        echo =====================================
-        echo  TRADUCTEUR REN'PY PRO v1.1.0
-        echo =====================================
-        echo.
-        echo Lancement en cours...
-        echo.
-        if not exist TraducteurRenPyPro.exe (
-            echo ERREUR: TraducteurRenPyPro.exe non trouve!
-            echo Verifiez que votre antivirus ne l'a pas supprime.
-            pause
-            exit /b 1
-        )
-        start /wait TraducteurRenPyPro.exe
-        echo.
-        echo Programme ferme. Appuyez sur une touche pour quitter.
-        pause >nul
-        "@
-        $launcher | Out-File -FilePath "LANCER_TRADUCTEUR.bat" -Encoding ASCII
-        
-        # Créer dossier structuré
-        New-Item -ItemType Directory -Path "TraducteurRenPyPro_Windows" -Force
-        Copy-Item "TraducteurRenPyPro.exe" "TraducteurRenPyPro_Windows\"
-        Copy-Item "LISEZMOI_ANTIVIRUS.txt" "TraducteurRenPyPro_Windows\"
-        Copy-Item "LANCER_TRADUCTEUR.bat" "TraducteurRenPyPro_Windows\"
-        
-        # Générer checksums
-        Get-FileHash "TraducteurRenPyPro_Windows\TraducteurRenPyPro.exe" -Algorithm SHA256 | 
-          Select-Object Hash, Algorithm, Path | 
-          Export-Csv -NoTypeInformation -Path "TraducteurRenPyPro_Windows\checksums.csv"
-        
-        # Créer archive finale
-        Compress-Archive -Path "TraducteurRenPyPro_Windows" -DestinationPath "TraducteurRenPyPro-Windows-x64.zip" -Force
-        
-        # Créer aussi le hash de l'archive
-        Get-FileHash "TraducteurRenPyPro-Windows-x64.zip" -Algorithm SHA256 | Out-File "TraducteurRenPyPro-Windows.sha256"
-    
-    # VirusTotal section commentée pour éviter les avertissements
-    # Décommentez et configurez VIRUSTOTAL_API_KEY dans GitHub Secrets si nécessaire
-    # - name: Submit to VirusTotal (Optional)
-    #   if: secrets.VIRUSTOTAL_API_KEY != ''
-    #   run: |
-    #     echo "Clé VirusTotal détectée - Soumission possible"
-    #     # Ajouter ici le script de soumission VirusTotal si souhaité
-    #   env:
-    #     VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        Compress-Archive -Path TraducteurRenPyPro.exe -DestinationPath TraducteurRenPyPro-Windows-x64.zip
+        Get-FileHash TraducteurRenPyPro.exe -Algorithm SHA256 | Out-File TraducteurRenPyPro-Windows.sha256
     
     - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
@@ -185,45 +53,6 @@ jobs:
         files: |
           dist/TraducteurRenPyPro-Windows-x64.zip
           dist/TraducteurRenPyPro-Windows.sha256
-        body: |
-          ## 🎮 Traducteur Ren'Py Pro v${{ github.ref_name }}
-          
-          ### 📦 Package Windows complet inclus :
-          - `TraducteurRenPyPro.exe` - Application principale
-          - `LANCER_TRADUCTEUR.bat` - Script de lancement sécurisé  
-          - `LISEZMOI_ANTIVIRUS.txt` - Guide pour les faux positifs
-          - `checksums.csv` - Vérification d'intégrité SHA256
-          
-          ### ⚠️ **Important - Faux positifs antivirus**
-          
-          Ce logiciel peut être détecté comme suspect par votre antivirus. 
-          **C'est un faux positif normal** car :
-          - Fichier .exe non signé numériquement (coût prohibitif pour un projet open source)
-          - Application Python compilée avec PyInstaller
-          - Outil qui lit/écrit des fichiers (fonction normale d'un traducteur)
-          
-          ### ✅ **Solutions recommandées :**
-          1. **Exclusion antivirus** - Ajouter une exclusion pour le dossier d'installation
-          2. **Vérification intégrité** - Utiliser les checksums SHA256 fournis
-          3. **Code source ouvert** - 100% du code visible sur ce repository GitHub
-          4. **Script de lancement** - Utiliser `LANCER_TRADUCTEUR.bat` inclus pour un démarrage propre
-          
-          ### 🔒 **Garanties de sécurité :**
-          - ✅ Code source entièrement ouvert et vérifiable
-          - ✅ Aucune connexion internet requise
-          - ✅ Aucune collecte de données personnelles
-          - ✅ Aucune modification système (portable)
-          - ✅ Build automatisé sur GitHub Actions (traçable)
-          
-          ### 🛠️ **Installation rapide :**
-          1. Télécharger `TraducteurRenPyPro-Windows-x64.zip`
-          2. Extraire dans un dossier dédié
-          3. Ajouter exclusion antivirus pour ce dossier
-          4. Double-clic sur `LANCER_TRADUCTEUR.bat`
-          
-          ---
-          
-          *💡 En cas de problème : Consultez d'abord `LISEZMOI_ANTIVIRUS.txt` dans l'archive*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -250,102 +79,13 @@ jobs:
     
     - name: Build Linux executable
       run: |
-        pyinstaller main.py \
-          --name="TraducteurRenPyPro" \
-          --onefile \
-          --windowed \
-          --noconfirm \
-          --clean \
-          --hidden-import=tkinterdnd2 \
-          --hidden-import=utils.constants \
-          --hidden-import=utils.config \
-          --hidden-import=utils.logging \
-          --hidden-import=core.extraction \
-          --hidden-import=core.reconstruction \
-          --hidden-import=core.validation \
-          --hidden-import=core.file_manager \
-          --hidden-import=core.coherence_checker \
-          --hidden-import=ui.backup_manager \
-          --hidden-import=ui.interface \
-          --hidden-import=ui.tutorial \
-          --add-data="utils:utils" \
-          --add-data="core:core" \
-          --add-data="ui:ui" \
-          --exclude-module=matplotlib \
-          --exclude-module=numpy \
-          --exclude-module=scipy \
-          --exclude-module=pandas
+        pyinstaller main.py --name="TraducteurRenPyPro" --onefile --windowed --noconfirm --clean --hidden-import=tkinterdnd2 --hidden-import=utils.constants --hidden-import=utils.config --hidden-import=utils.logging --hidden-import=core.extraction --hidden-import=core.reconstruction --hidden-import=core.validation --hidden-import=core.file_manager --hidden-import=core.coherence_checker --hidden-import=ui.backup_manager --hidden-import=ui.interface --hidden-import=ui.tutorial --add-data="utils:utils" --add-data="core:core" --add-data="ui:ui"
     
-    - name: Create Linux package with documentation
+    - name: Create Linux archive
       run: |
         cd dist
-        
-        # Script de lancement Linux
-        cat > run_traducteur.sh << 'EOF'
-        #!/bin/bash
-        echo "======================================="
-        echo " TRADUCTEUR REN'PY PRO v1.1.0"
-        echo "======================================="
-        echo
-        echo "Lancement en cours..."
-        
-        # Vérifier les permissions
-        if [ ! -x "./TraducteurRenPyPro" ]; then
-            echo "Attribution des permissions d'exécution..."
-            chmod +x ./TraducteurRenPyPro
-        fi
-        
-        # Lancer l'application
-        ./TraducteurRenPyPro
-        
-        echo
-        echo "Programme fermé. Appuyez sur Entrée pour quitter."
-        read
-        EOF
-        
-        chmod +x run_traducteur.sh
-        
-        # Documentation Linux
-        cat > README_LINUX.txt << 'EOF'
-        =======================================
-         TRADUCTEUR REN'PY PRO v1.1.0 - LINUX
-        =======================================
-        
-        🚀 LANCEMENT RAPIDE:
-        1. Décompresser l'archive
-        2. Ouvrir un terminal dans le dossier
-        3. Exécuter: ./run_traducteur.sh
-        
-        OU
-        
-        1. Double-clic sur run_traducteur.sh
-        2. Choisir "Exécuter dans un terminal"
-        
-        📋 PRÉREQUIS:
-        - Python 3.8+ (généralement pré-installé)
-        - Tkinter (sudo apt install python3-tk si nécessaire)
-        
-        🔧 DÉPANNAGE:
-        - Si erreur de permissions: chmod +x TraducteurRenPyPro
-        - Si erreur Tkinter: sudo apt install python3-tk
-        
-        🔗 Support: https://github.com/Rory-Mercury-91/rory_tool
-        EOF
-        
-        # Créer dossier structuré
-        mkdir TraducteurRenPyPro_Linux
-        cp TraducteurRenPyPro TraducteurRenPyPro_Linux/
-        cp run_traducteur.sh TraducteurRenPyPro_Linux/
-        cp README_LINUX.txt TraducteurRenPyPro_Linux/
-        
-        # Checksums
-        sha256sum TraducteurRenPyPro_Linux/TraducteurRenPyPro > TraducteurRenPyPro_Linux/checksums.sha256
-        
-        # Archive finale
-        tar -czf TraducteurRenPyPro-Linux-x64.tar.gz TraducteurRenPyPro_Linux/
-        
-        # Hash de l'archive
-        sha256sum TraducteurRenPyPro-Linux-x64.tar.gz > TraducteurRenPyPro-Linux.sha256
+        tar -czf TraducteurRenPyPro-Linux-x64.tar.gz TraducteurRenPyPro
+        sha256sum TraducteurRenPyPro > TraducteurRenPyPro-Linux.sha256
     
     - name: Upload Linux artifacts
       uses: actions/upload-artifact@v4
@@ -362,31 +102,5 @@ jobs:
         files: |
           dist/TraducteurRenPyPro-Linux-x64.tar.gz
           dist/TraducteurRenPyPro-Linux.sha256
-        body: |
-          ## 🐧 Version Linux
-          
-          ### 📦 Package Linux inclus :
-          - `TraducteurRenPyPro` - Exécutable principal
-          - `run_traducteur.sh` - Script de lancement automatique
-          - `README_LINUX.txt` - Instructions d'installation
-          - `checksums.sha256` - Vérification d'intégrité
-          
-          ### 🚀 **Installation rapide :**
-          ```bash
-          # Extraire l'archive
-          tar -xzf TraducteurRenPyPro-Linux-x64.tar.gz
-          cd TraducteurRenPyPro_Linux
-          
-          # Lancer directement
-          ./run_traducteur.sh
-          ```
-          
-          ### 📋 **Prérequis Linux :**
-          - Python 3.8+ (pré-installé sur la plupart des distributions)
-          - Tkinter : `sudo apt install python3-tk` (Ubuntu/Debian)
-          
-          ### 🔧 **Dépannage courant :**
-          - Permissions : `chmod +x TraducteurRenPyPro`
-          - Interface graphique : Installer `python3-tk`
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 # main.py
 # Traducteur Ren'Py Pro - Interface principale
-# Version 1.1.2 - Corrections finales des erreurs self
+# Version 1.5.0 - Corrections finales des erreurs self
 
 """
 Traducteur Ren'Py Pro
@@ -155,7 +155,31 @@ class TraducteurRenPyPro:
             except Exception as e:
                 print(f"Erreur lors de la fermeture: {e}")
                 self.root.destroy()
-    
+
+    def check_imports():
+        """Vérifie que tous les modules nécessaires sont disponibles"""
+        required_modules = [
+            'tkinter', 'tkinterdnd2', 'core.extraction', 'core.reconstruction',
+            'core.validation', 'core.file_manager', 'core.coherence_checker',
+            'ui.backup_manager', 'ui.interface', 'ui.themes', 'ui.tutorial',
+            'utils.constants', 'utils.config', 'utils.logging'
+        ]
+        
+        missing = []
+        for module in required_modules:
+            try:
+                if module == 'tkinterdnd2':
+                    import tkinterdnd2
+                else:
+                    __import__(module)
+            except ImportError:
+                missing.append(module)
+        
+        if missing:
+            print(f"⚠️ Modules manquants: {', '.join(missing)}")
+            return False
+        return True
+
     # =============================================================================
     # MÉTHODES DE BASCULEMENT DE THÈME
     # =============================================================================
@@ -1988,6 +2012,8 @@ class TodoSelectorDialog:
     """Dialogue pour sélectionner à partir de quelle date TODO extraire"""
     
     def __init__(self, parent, file_content):
+        import datetime  # Import local si pas déjà fait
+        import re        # Import local si pas déjà fait
         self.parent = parent
         self.file_content = file_content
         self.result = None
