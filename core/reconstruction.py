@@ -36,14 +36,30 @@ class FileReconstructor:
     def load_file_content(self, file_content, original_path):
         """
         Charge le contenu du fichier à reconstruire
-        
+
         Args:
             file_content (list): Lignes du fichier original
             original_path (str): Chemin du fichier original
         """
-        self.file_content = file_content[:]
-        self.original_path = original_path
+        from core.extraction import extract_game_name
+        from utils.constants import FOLDERS
+
+        # Conserver le contenu et le chemin
+        self.file_content   = file_content[:]
+        self.original_path  = original_path
+
+        # Déduire le nom du jeu et les dossiers temp
+        self.game_name       = extract_game_name(original_path)
+        temp_root            = FOLDERS["temp"]
+        self.mapping_folder  = os.path.join(temp_root, self.game_name, "fichiers_a_ne_pas_traduire")
+        self.translate_folder = os.path.join(temp_root, self.game_name, "fichiers_a_traduire")
+
+        # Réinitialiser tous les attributs de reconstruction
         self._reset_reconstruction_data()
+        self._load_mapping_files()
+        self._load_translation_files()
+
+
     
     def _reset_reconstruction_data(self):
         """Remet à zéro les données de reconstruction"""

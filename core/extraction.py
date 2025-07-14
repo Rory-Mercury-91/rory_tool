@@ -14,6 +14,19 @@ from collections import OrderedDict
 from utils.constants import SPECIAL_CODES, PROTECTION_ORDER
 from utils.logging import log_message, anonymize_path
 
+def extract_game_name(path: str) -> str:
+    """
+    Extrait le nom du jeu à partir du chemin complet du fichier.
+    Ex : ".../temporaires/MonJeu/fichiers_a_traduire/scene.rpy" → "MonJeu"
+    """
+    parts = os.path.normpath(path).split(os.sep)
+    try:
+        # on suppose que <game_name> est deux dossiers au-dessus du fichier
+        return parts[-3]
+    except IndexError:
+        raise ValueError(f"Impossible d'extraire le nom du jeu depuis : {path}")
+
+
 def get_file_base_name(filepath):
     """
     Récupère le nom de base du fichier sans extension pour créer des fichiers uniques
@@ -336,7 +349,7 @@ class TextExtractor:
         except Exception as e:
             log_message("ERREUR", "Erreur lors de l'extraction des textes", e)
             raise
-    
+
     def _save_extraction_files(self):
         """Sauvegarde tous les fichiers d'extraction avec la nouvelle structure organisée"""
         from utils.constants import FOLDERS, ensure_folders_exist
@@ -446,6 +459,17 @@ def extraire_textes(file_content, original_path):
     Returns:
         dict: Résultats de l'extraction
     """
+    # 1) Validation avant extraction
+    from core.validation import validate_before_extraction, create_safety_backup
+    validate_before_extraction(original_path)
+    create_safety_backup(original_path)
+
+    # 2) (Optionnel) Préparer le dossier temporaire
+    from core.file_manager import TempFileManager
+    TempFileManager().ensure_temp_dir_for(original_path)
+
+    # 3) Lancer l’extraction
     extractor = TextExtractor()
     extractor.load_file_content(file_content, original_path)
     return extractor.extract_texts()
+
