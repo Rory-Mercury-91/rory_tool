@@ -1,6 +1,6 @@
 # utils/constants.py - THÈMES CORRIGÉS
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v1.9.0
+# Created for Traducteur Ren'Py Pro v2.0.0
 
 """
 Module contenant toutes les constantes de l'application

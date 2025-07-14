@@ -1,6 +1,6 @@
 # core/extraction.py
 # Extraction Functions Module
-# Created for Traducteur Ren'Py Pro v1.9.0
+# Created for Traducteur Ren'Py Pro v2.0.0
 
 """
 Module d'extraction des textes depuis les fichiers Ren'Py

@@ -1,6 +1,6 @@
 # main.py
 # Traducteur Ren'Py Pro - Interface principale
-# v1.9.0 - Corrections finales des erreurs self
+# v2.0.0 - Corrections finales des erreurs self
 
 """
 Traducteur Ren'Py Pro
@@ -27,18 +27,35 @@ except ImportError:
     DND_AVAILABLE = False
     print("❌ DEBUG - tkinterdnd2 non disponible")
 
-# Imports des modules de l'application
+# Modules utilitaires
 from utils.config import config_manager
 from utils.logging import log_message, anonymize_path
-from core.extraction import TextExtractor
-from core.reconstruction import FileReconstructor
-from core.validation import validate_before_extraction, create_safety_backup, validate_before_reconstruction
+from utils.constants import VERSION, THEMES, WINDOW_CONFIG, MESSAGES, FILE_NAMES
+
+# Gestion des fichiers
 from core.file_manager import file_manager, FileOpener, TempFileManager
+
+# Extraction & nommage
+from core.extraction import (
+    TextExtractor,
+    get_file_base_name,
+    extract_game_name,
+)
+
+# Reconstruction
+from core.reconstruction import FileReconstructor
+
+# Validation & sauvegarde
+from core.validation import (
+    validate_before_extraction,
+    create_safety_backup,
+    validate_before_reconstruction,
+)
 from core.coherence_checker import check_file_coherence
+
+# Interface utilisateur
 from ui.backup_manager import show_backup_manager
 from ui.interface import SaveModeDialog
-from core.extraction import get_file_base_name
-from utils.constants import VERSION, THEMES, WINDOW_CONFIG, MESSAGES, FILE_NAMES
 
 # Imports du tutoriel (avec fallback de sécurité)
 try:
