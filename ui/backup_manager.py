@@ -1,6 +1,6 @@
 # ui/backup_manager.py
 # Backup Management Interface
-# Created for Traducteur Ren'Py Pro v2.2.0
+# Created for Traducteur Ren'Py Pro v2.3.0
 
 """
 Module d'interface pour la gestion des sauvegardes
@@ -37,7 +37,7 @@ class BackupDialog:
         self.dialog = tk.Toplevel(self.parent)
         filename = os.path.basename(self.filepath)
         self.dialog.title(f"🛡️ Sauvegardes de {filename}")
-        self.dialog.geometry("600x400")
+        self.dialog.geometry("600x500")
         self.dialog.resizable(True, True)
         self.dialog.transient(self.parent)
         self.dialog.grab_set()
@@ -121,7 +121,7 @@ class BackupDialog:
             text="🔄 Actualiser",
             font=('Segoe UI Emoji', 10),
             bg=theme["accent"],
-            fg=theme["button_fg"],
+            fg="#000000",
             activebackground='#157347',
             bd=0,
             pady=8,
@@ -136,7 +136,7 @@ class BackupDialog:
             text="❌ Fermer",
             font=('Segoe UI Emoji', 10),
             bg=theme["danger"],
-            fg=theme["button_fg"],
+            fg="#000000",
             activebackground='#b02a37',
             bd=0,
             pady=8,
@@ -373,7 +373,7 @@ class BackupDialog:
             text="🔄 Restaurer",
             font=('Segoe UI Emoji', 10),
             bg=theme["accent"],
-            fg=theme["button_fg"],
+            fg="#000000",
             activebackground='#157347',
             bd=0,
             pady=6,
@@ -388,7 +388,7 @@ class BackupDialog:
             text="🗑️ Supprimer",
             font=('Segoe UI Emoji', 10),
             bg=theme["danger"],
-            fg=theme["button_fg"],
+            fg="#000000",
             activebackground='#b02a37',
             bd=0,
             pady=6,
@@ -417,7 +417,7 @@ class BackupDialog:
                 text="🛡️ Sécurité",
                 font=('Segoe UI Emoji', 9, 'bold'),
                 bg=theme["accent"],
-                fg=theme["button_fg"],
+                fg="#000000",
                 padx=8,
                 pady=2
             )

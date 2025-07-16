@@ -1,9 +1,9 @@
-# core/reconstruction.py
-# Reconstruction Functions Module
+# core/reconstruction_enhanced.py
+# Enhanced Reconstruction with Glossary Support
 # Created for Traducteur Ren'Py Pro v2.3.0
 
 """
-Module de reconstruction des fichiers traduits
+Reconstruction améliorée avec support du glossaire
 """
 
 import os
@@ -12,10 +12,10 @@ import time
 import json
 from collections import OrderedDict
 from utils.logging import log_message
-from core.extraction import get_file_base_name
 
-class FileReconstructor:
-    """Classe principale pour la reconstruction des fichiers"""
+
+class EnhancedFileReconstructor:
+    """Classe principale pour la reconstruction des fichiers avec support du glossaire"""
     
     def __init__(self):
         self.file_content = []
@@ -26,12 +26,14 @@ class FileReconstructor:
         self.mapping = {}
         self.asterix_mapping = {}
         self.empty_mapping = {}
+        self.glossary_mapping = {}  # ✅ NOUVEAU : Mapping du glossaire
         self.positions = []
         self.quote_counts = []
         self.suffixes = []
         self.translations = []
         self.asterix_translations = []
         self.empty_translations = []
+        self.glossary_translations = []  # ✅ NOUVEAU : Traductions du glossaire
     
     def load_file_content(self, file_content, original_path):
         """Charge le contenu avec extraction du nom de jeu"""
@@ -41,7 +43,7 @@ class FileReconstructor:
         self.file_content = file_content[:]
         self.original_path = original_path
 
-        # ✅ CORRECTION : Extraire et stocker le nom du jeu
+        # Extraire et stocker le nom du jeu
         self.game_name = extract_game_name(original_path)
         temp_root = FOLDERS["temp"]
         self.mapping_folder = os.path.join(temp_root, self.game_name, "fichiers_a_ne_pas_traduire")
@@ -52,25 +54,25 @@ class FileReconstructor:
         ensure_game_structure(self.game_name)
 
         self._reset_reconstruction_data()
-
-
     
     def _reset_reconstruction_data(self):
         """Remet à zéro les données de reconstruction"""
         self.mapping.clear()
         self.asterix_mapping.clear()
         self.empty_mapping.clear()
+        self.glossary_mapping.clear()  # ✅ NOUVEAU
         self.positions.clear()
         self.quote_counts.clear()
         self.suffixes.clear()
         self.translations.clear()
         self.asterix_translations.clear()
         self.empty_translations.clear()
+        self.glossary_translations.clear()  # ✅ NOUVEAU
         self.reconstruction_time = 0
     
     def reconstruct_file(self, save_mode='new_file'):
         """
-        Fonction principale de reconstruction
+        Fonction principale de reconstruction avec support du glossaire
         
         Args:
             save_mode (str): 'overwrite' ou 'new_file'
@@ -106,23 +108,23 @@ class FileReconstructor:
                 'save_mode': save_mode
             }
             
-            log_message("INFO", f"Reconstruction réussie en {self.reconstruction_time:.2f}s")
+            log_message("INFO", f"Reconstruction avec glossaire réussie en {self.reconstruction_time:.2f}s")
             return result
             
         except Exception as e:
-            log_message("ERREUR", "Erreur critique pendant la reconstruction", e)
+            log_message("ERREUR", "Erreur critique pendant la reconstruction avec glossaire", e)
             raise
     
     def _load_mapping_files(self):
-        """CORRIGÉ : Charge les mappings depuis la nouvelle structure"""
+        """Charge les mappings depuis la nouvelle structure (avec glossaire)"""
         from utils.constants import FOLDERS
-        from core.extraction import get_file_base_name
+        from core.extraction_enhanced import get_file_base_name
         from utils.logging import extract_game_name
 
         file_base = get_file_base_name(self.original_path)
         game_name = extract_game_name(self.original_path)
         
-        # ✅ CORRECTION : Utiliser la nouvelle structure
+        # Utiliser la nouvelle structure
         temp_root = FOLDERS["temp"]
         mapping_folder = os.path.join(temp_root, game_name, "fichiers_a_ne_pas_traduire")
 
@@ -163,6 +165,22 @@ class FileReconstructor:
                         placeholder, empty = line.strip().split(" => ", 1)
                         self.empty_mapping[placeholder] = empty
 
+        # ✅ NOUVEAU : Charger le mapping du glossaire (si existe)
+        glossary_file = os.path.join(mapping_folder, f"{file_base}_glossary_mapping.txt")
+        if os.path.exists(glossary_file):
+            with open(glossary_file, "r", encoding="utf-8") as gmf:
+                for line in gmf:
+                    if " => " in line:
+                        parts = line.strip().split(" => ")
+                        if len(parts) >= 3:
+                            placeholder = parts[0]
+                            original = parts[1]
+                            translation = parts[2]
+                            self.glossary_mapping[placeholder] = {
+                                'original': original,
+                                'translation': translation
+                            }
+
         # Charger les positions et données
         with open(positions_file, "r", encoding="utf-8") as pf:
             position_data = json.load(pf)
@@ -177,18 +195,18 @@ class FileReconstructor:
             self.quote_counts = position_data['quote_counts']
             self.suffixes = position_data.get('suffixes', [""] * len(self.positions))
 
-        log_message("INFO", f"Mappings chargés depuis {mapping_folder}")
+        log_message("INFO", f"Mappings chargés depuis {mapping_folder} (avec glossaire: {len(self.glossary_mapping)} termes)")
     
     def _load_translation_files(self):
-        """CORRIGÉ : Charge les traductions depuis la nouvelle structure"""
+        """Charge les traductions depuis la nouvelle structure (avec glossaire)"""
         from utils.constants import FOLDERS
-        from core.extraction import get_file_base_name
+        from core.extraction_enhanced import get_file_base_name
         from utils.logging import extract_game_name
 
         file_base = get_file_base_name(self.original_path)
         game_name = extract_game_name(self.original_path)
         
-        # ✅ CORRECTION : Utiliser la nouvelle structure
+        # Utiliser la nouvelle structure
         temp_root = FOLDERS["temp"]
         translate_folder = os.path.join(temp_root, game_name, "fichiers_a_traduire")
 
@@ -216,10 +234,22 @@ class FileReconstructor:
         else:
             self.empty_translations = []
 
-        log_message("INFO", f"Traductions chargées depuis {translate_folder}")
+        # ✅ NOUVEAU : Fichier glossaire (si présent)
+        glossary_trans_path = os.path.join(translate_folder, f"{file_base}_glossary.txt")
+        if os.path.exists(glossary_trans_path):
+            with open(glossary_trans_path, "r", encoding="utf-8") as gf:
+                # Ignorer les lignes de commentaire
+                for line in gf:
+                    line = line.rstrip("\n")
+                    if not line.startswith('#') and line.strip():
+                        self.glossary_translations.append(line)
+        else:
+            self.glossary_translations = []
+
+        log_message("INFO", f"Traductions chargées depuis {translate_folder} (glossaire: {len(self.glossary_translations)} termes)")
     
     def _rebuild_content(self):
-        """Reconstruit le contenu du fichier avec les traductions"""
+        """Reconstruit le contenu du fichier avec les traductions et le glossaire"""
         # Créer un mapping des placeholders astérisques vers leurs traductions
         asterix_trans_mapping = {}
         if self.asterix_translations and self.asterix_mapping:
@@ -228,13 +258,22 @@ class FileReconstructor:
                 if i < len(self.asterix_translations):
                     asterix_content = self.asterix_translations[i]
                     
-                    # NOUVEAU : Restaurer les codes protégés dans le contenu astérisque
+                    # Restaurer les codes protégés dans le contenu astérisque
                     restored_asterix = self._restore_codes_in_asterix(asterix_content)
                     
                     translated_asterix = f"*{restored_asterix}*"
                     asterix_trans_mapping[placeholder] = translated_asterix
         
-        # CORRECTION PRINCIPALE : Créer un mapping inverse pour restaurer les placeholders
+        # ✅ NOUVEAU : Créer un mapping des placeholders de glossaire vers leurs traductions
+        glossary_trans_mapping = {}
+        if self.glossary_translations and self.glossary_mapping:
+            placeholder_list = list(self.glossary_mapping.keys())
+            for i, placeholder in enumerate(placeholder_list):
+                if i < len(self.glossary_translations):
+                    # Utiliser la traduction du fichier glossaire
+                    glossary_trans_mapping[placeholder] = self.glossary_translations[i]
+        
+        # Créer un mapping inverse pour restaurer les placeholders
         restore_mapping = {}
         
         # Restaurer les codes spéciaux normaux
@@ -247,7 +286,6 @@ class FileReconstructor:
             for original, placeholder in self.empty_mapping.items():
                 # Inverser : placeholder -> original
                 restore_mapping[placeholder] = original
-                log_message("INFO", f"Mapping de restauration: {placeholder} -> {original}")
         
         # Traiter les textes vides avec leurs traductions
         empty_text_mapping = {}
@@ -260,7 +298,7 @@ class FileReconstructor:
             
             if text_placeholders and self.empty_translations:
                 text_items = list(text_placeholders.items())
-                text_items.reverse()  # INVERSER L'ORDRE
+                text_items.reverse()  # Inverser l'ordre
                 
                 translation_index = len(self.empty_translations) - 1
                 for placeholder, original_pattern in text_items:
@@ -290,13 +328,17 @@ class FileReconstructor:
                         if translation_index + j < len(self.translations):
                             translation = self.translations[translation_index + j]
                             
-                            # CORRECTION : Restaurer TOUS les placeholders dans la traduction
+                            # Restaurer TOUS les placeholders dans la traduction
                             for placeholder, original in restore_mapping.items():
                                 translation = translation.replace(placeholder, original)
                             
                             # Restaurer les astérisques traduites
                             for asterix_ph, translated_asterix in asterix_trans_mapping.items():
                                 translation = translation.replace(asterix_ph, translated_asterix)
+                            
+                            # ✅ NOUVEAU : Restaurer les termes du glossaire traduits
+                            for glossary_ph, glossary_translation in glossary_trans_mapping.items():
+                                translation = translation.replace(glossary_ph, glossary_translation)
                                 
                             line_translations.append(translation)
                         else:
@@ -341,6 +383,10 @@ class FileReconstructor:
                 for placeholder, original in restore_mapping.items():
                     if placeholder.startswith("(ESC"):
                         current_line = current_line.replace(placeholder, original)
+                
+                # ✅ NOUVEAU : Restaurer les termes du glossaire dans les lignes non extraites
+                for glossary_ph, glossary_translation in glossary_trans_mapping.items():
+                    current_line = current_line.replace(glossary_ph, glossary_translation)
                 
                 output_lines.append(current_line)
         
@@ -407,15 +453,15 @@ class FileReconstructor:
             return False
     
     def _cleanup_temp_files(self):
-        """CORRIGÉ : Nettoie les fichiers temporaires dans la nouvelle structure"""
+        """Nettoie les fichiers temporaires dans la nouvelle structure"""
         from utils.constants import FOLDERS
-        from core.extraction import get_file_base_name
+        from core.extraction_enhanced import get_file_base_name
         from utils.logging import extract_game_name
 
         file_base = get_file_base_name(self.original_path)
         game_name = extract_game_name(self.original_path)
         
-        # ✅ CORRECTION : Nettoyer dans la nouvelle structure
+        # Nettoyer dans la nouvelle structure
         temp_root = FOLDERS["temp"]
         mapping_folder = os.path.join(temp_root, game_name, "fichiers_a_ne_pas_traduire")
         
@@ -423,7 +469,8 @@ class FileReconstructor:
             os.path.join(mapping_folder, f"{file_base}_mapping.txt"),
             os.path.join(mapping_folder, f"{file_base}_positions.json"),
             os.path.join(mapping_folder, f"{file_base}_asterix_mapping.txt"),
-            os.path.join(mapping_folder, f"{file_base}_empty_mapping.txt")
+            os.path.join(mapping_folder, f"{file_base}_empty_mapping.txt"),
+            os.path.join(mapping_folder, f"{file_base}_glossary_mapping.txt")  # ✅ NOUVEAU
         ]
         
         cleaned_count = 0
@@ -437,50 +484,10 @@ class FileReconstructor:
         
         log_message("INFO", f"Fichiers temporaires nettoyés pour {file_base}: {cleaned_count} fichiers")
 
-# Fonction de validation des traductions
-def validate_translations(original_count, translation_count, asterix_count=0, empty_count=0):
-    """
-    Valide que le nombre de traductions correspond aux textes extraits
-    
-    Args:
-        original_count (int): Nombre de textes extraits
-        translation_count (int): Nombre de traductions fournies
-        asterix_count (int): Nombre d'astérisques
-        empty_count (int): Nombre de textes vides
-        
-    Returns:
-        dict: Résultats de la validation
-    """
-    validation_result = {
-        'valid': True,
-        'warnings': [],
-        'errors': []
-    }
-    
-    # Vérification principale
-    if translation_count != original_count:
-        validation_result['valid'] = False
-        validation_result['errors'].append(
-            f"Nombre de traductions incorrect: {translation_count} fourni, {original_count} attendu"
-        )
-    
-    # Vérifications secondaires
-    if asterix_count > 0:
-        validation_result['warnings'].append(
-            f"{asterix_count} expressions entre astérisques détectées - vérifiez asterix.txt"
-        )
-    
-    if empty_count > 0:
-        validation_result['warnings'].append(
-            f"{empty_count} textes vides/espaces détectés - vérifiez empty.txt"
-        )
-    
-    return validation_result
-
 # Fonction utilitaire pour compatibilité
-def reconstruire_fichier(file_content, original_path, save_mode='new_file'):
+def reconstruire_fichier_enhanced(file_content, original_path, save_mode='new_file'):
     """
-    Fonction de reconstruction compatible avec l'ancienne interface
+    Fonction de reconstruction avec support du glossaire
     
     Args:
         file_content (list): Contenu du fichier original
@@ -490,6 +497,6 @@ def reconstruire_fichier(file_content, original_path, save_mode='new_file'):
     Returns:
         dict: Résultats de la reconstruction
     """
-    reconstructor = FileReconstructor()
+    reconstructor = EnhancedFileReconstructor()
     reconstructor.load_file_content(file_content, original_path)
     return reconstructor.reconstruct_file(save_mode)

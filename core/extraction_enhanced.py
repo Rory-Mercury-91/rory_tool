@@ -1,9 +1,9 @@
-# core/extraction.py
-# Extraction Functions Module
+# core/extraction_enhanced.py
+# Enhanced Extraction with Glossary Support
 # Created for Traducteur Ren'Py Pro v2.3.0
 
 """
-Module d'extraction des textes depuis les fichiers Ren'Py
+Modification de l'extraction pour intégrer le glossaire
 """
 
 import os
@@ -14,7 +14,16 @@ from collections import OrderedDict
 from utils.constants import SPECIAL_CODES, PROTECTION_ORDER
 from utils.logging import log_message, anonymize_path
 
-# Fonction extract_game_name déplacée vers utils/logging.py pour éviter la duplication
+# ✅ CORRECTION : Créer PROTECTION_ORDER_NO_ELLIPSIS correctement
+PROTECTION_ORDER_NO_ELLIPSIS = [
+    (r'\"', 'Guillemets échappés'),  # EN PREMIER !
+    ('""', 'Chaînes vides'),
+    ('" "', 'Un espace'),
+    ('"  "', 'Deux espaces'),
+    ('"   "', 'Trois espaces')
+    # ✅ Points de suspension supprimés
+]
+
 def get_file_base_name(filepath):
     """
     Récupère le nom de base du fichier sans extension pour créer des fichiers uniques
@@ -36,8 +45,8 @@ def get_file_base_name(filepath):
     
     return safe_name
 
-class TextExtractor:
-    """Classe principale pour l'extraction des textes"""
+class EnhancedTextExtractor:
+    """Classe principale pour l'extraction des textes avec support du glossaire"""
     
     def __init__(self):
         self.file_content = []
@@ -51,6 +60,7 @@ class TextExtractor:
         self.mapping = OrderedDict()
         self.asterix_mapping = OrderedDict()
         self.empty_mapping = OrderedDict()
+        self.glossary_mapping = OrderedDict()  # ✅ NOUVEAU : Mapping du glossaire
         self.positions = []
         self.extracted_texts = []
         self.line_quote_counts = []
@@ -75,6 +85,7 @@ class TextExtractor:
         self.mapping.clear()
         self.asterix_mapping.clear()
         self.empty_mapping.clear()
+        self.glossary_mapping.clear()  # ✅ NOUVEAU
         self.positions.clear()
         self.extracted_texts.clear()
         self.line_quote_counts.clear()
@@ -89,7 +100,7 @@ class TextExtractor:
     
     def extract_texts(self):
         """
-        Fonction principale d'extraction des textes
+        Fonction principale d'extraction des textes avec support du glossaire
         
         Returns:
             dict: Résultats de l'extraction avec chemins des fichiers créés
@@ -98,10 +109,13 @@ class TextExtractor:
             raise ValueError("Aucun contenu de fichier chargé")
         
         start_time = time.time()
-        log_message("INFO", f"Début d'extraction pour {anonymize_path(self.original_path) if self.original_path else 'fichier_inconnu'}")
+        log_message("INFO", f"Début d'extraction avec glossaire pour {anonymize_path(self.original_path) if self.original_path else 'fichier_inconnu'}")
         
         try:
-            # Étapes d'extraction
+            # ✅ NOUVEAU : Étape 1 - Protection des termes du glossaire
+            self._apply_glossary_protection()
+            
+            # Étapes d'extraction existantes
             self._build_code_mapping()
             self._build_asterix_mapping()
             self._apply_empty_text_protection()
@@ -118,13 +132,33 @@ class TextExtractor:
             self.asterix_count = len(self.asterix_texts)
             self.empty_count = len(self.empty_texts)
             
-            log_message("INFO", f"Extraction réussie en {self.extraction_time:.2f}s: {self.extracted_count} textes, {self.asterix_count} astérisques, {self.empty_count} vides")
+            log_message("INFO", f"Extraction avec glossaire réussie en {self.extraction_time:.2f}s: {self.extracted_count} textes, {self.asterix_count} astérisques, {self.empty_count} vides, {len(self.glossary_mapping)} termes de glossaire")
             
             return result
             
         except Exception as e:
-            log_message("ERREUR", "Erreur critique pendant l'extraction", e)
+            log_message("ERREUR", "Erreur critique pendant l'extraction avec glossaire", e)
             raise
+    
+    def _apply_glossary_protection(self):
+        """Applique la protection du glossaire avec import local"""
+        try:
+            # Import local pour éviter les imports circulaires
+            from .glossary import glossary_manager
+            
+            # Appliquer la protection du glossaire
+            protected_lines, glossary_mapping = glossary_manager.protect_glossary_terms(self.file_content)
+            
+            # Mettre à jour le contenu et stocker le mapping
+            self.file_content = protected_lines
+            self.glossary_mapping = glossary_mapping
+            
+            if glossary_mapping:
+                log_message("INFO", f"Glossaire appliqué: {len(glossary_mapping)} termes protégés")
+            
+        except Exception as e:
+            log_message("WARNING", f"Erreur lors de l'application du glossaire: {e}")
+            # Continuer sans le glossaire en cas d'erreur
     
     def _build_code_mapping(self):
         """Construit le mapping des codes spéciaux Ren'Py à protéger"""
@@ -142,7 +176,6 @@ class TextExtractor:
                         if code not in self.mapping:
                             self.mapping[code] = f"({len(self.mapping)+1:02d})"
             
-            #log_message("INFO", f"Mapping créé: {len(self.mapping)} éléments protégés")
             log_message("INFO", f"Codes spéciaux détectés: {len(self.mapping)} éléments")
         except Exception as e:
             log_message("ERREUR", "Erreur lors de la création du mapping", e)
@@ -171,7 +204,7 @@ class TextExtractor:
                         placeholder = f"(D{asterix_counter})"
                         self.asterix_mapping[full_asterix] = placeholder
                         
-                        # NOUVELLE LOGIQUE : Protéger les codes DANS le texte entre astérisques
+                        # Protéger les codes DANS le texte entre astérisques
                         protected_content = self._protect_codes_in_asterix(asterix_text)
                         self.asterix_texts.append(protected_content + '\n')
                         
@@ -202,11 +235,11 @@ class TextExtractor:
             return asterix_content  # Retourner l'original en cas d'erreur
 
     def _apply_empty_text_protection(self):
-        """Applique la protection complète des guillemets échappés et textes vides"""
+        """Applique la protection complète des guillemets échappés et textes vides (SANS points de suspension)"""
         try:
             empty_counter = 1
             
-            # CORRECTION : Variable pour le placeholder des guillemets échappés
+            # Variable pour le placeholder des guillemets échappés
             escape_placeholder = None
             
             log_message("INFO", "Protection des codes spéciaux et guillemets échappés")
@@ -219,11 +252,11 @@ class TextExtractor:
                     stripped_line.lower().startswith('old "')):
                     continue
                 
-                # Appliquer chaque pattern dans l'ordre exact
-                for pattern, description in PROTECTION_ORDER:
+                # ✅ CORRECTION : Utiliser PROTECTION_ORDER_NO_ELLIPSIS au lieu de PROTECTION_ORDER
+                for pattern, description in PROTECTION_ORDER_NO_ELLIPSIS:
                     # Traitement spécial pour les guillemets échappés
                     if pattern == r'\"':
-                        # CORRECTION : Créer le placeholder UNE SEULE FOIS
+                        # Créer le placeholder UNE SEULE FOIS
                         if escape_placeholder is None:
                             escape_placeholder = f"(ESC{empty_counter})"
                             self.empty_mapping[escape_placeholder] = r'\"'
@@ -233,7 +266,6 @@ class TextExtractor:
                         # Remplacer TOUTES les occurrences avec LE MÊME placeholder
                         while r'\"' in self.file_content[i]:
                             self.file_content[i] = self.file_content[i].replace(r'\"', escape_placeholder, 1)
-                            #log_message("INFO", f"Protégé {description}: \\\" -> {escape_placeholder}")
                     
                     else:
                         # Traitement normal pour les autres patterns
@@ -245,12 +277,10 @@ class TextExtractor:
                                 content = pattern[1:-1]  # Enlever les guillemets externes
                                 self.empty_texts.append(content + '\n')
                                 empty_counter += 1
-                                #log_message("INFO", f"Protégé {description}: {pattern} -> {placeholder}")
                             
                             # Remplacer UNE SEULE occurrence à la fois
                             self.file_content[i] = self.file_content[i].replace(pattern, f'"{self.empty_mapping[pattern]}"', 1)
             
-            #log_message("INFO", f"Protection terminée: {len(self.empty_texts)} textes vides + guillemets échappés protégés")
             protected_count = len(self.empty_texts) + (1 if escape_placeholder else 0)
             log_message("INFO", f"Protection terminée: {protected_count} éléments protégés")
         except Exception as e:
@@ -263,7 +293,7 @@ class TextExtractor:
     def _extract_dialogue_texts(self):
         """Extrait les textes de dialogue et stocke les positions"""
         try:
-            extracted_lines = 0  # Compteur pour le résumé
+            extracted_lines = 0
             
             for idx, line in enumerate(self.file_content):
                 # Remplacer TOUS les codes spéciaux par des placeholders
@@ -279,7 +309,7 @@ class TextExtractor:
                 
                 stripped = ph_line.strip()
                 
-                # CORRECTION PRINCIPALE : Ignorer TOUTES les lignes qui commencent par #
+                # Ignorer TOUTES les lignes qui commencent par #
                 if stripped.startswith('#'):
                     continue
                     
@@ -295,7 +325,7 @@ class TextExtractor:
                     # Filtrer les contenus pour ne garder que ceux qui ne sont pas des placeholders vides
                     non_empty_quotes = []
                     for content in quote_matches:
-                        # Vérifier si c'est un placeholder vide comme (C1), (C2), etc.
+                        # ✅ CORRECTION : Corriger l'expression régulière
                         if not re.match(r'^\(C\d+\)$', content.strip()) and not re.match(r'^\(ESC\d+\)$', content.strip()):
                             if content.strip():  # Ne pas extraire les lignes vides
                                 non_empty_quotes.append(content)
@@ -327,11 +357,7 @@ class TextExtractor:
                             self.extracted_texts.append(content + '\n')
                         
                         extracted_lines += 1
-                        
-                        # SUPPRESSION : Plus de log pour chaque ligne extraite
-                        # log_message("INFO", f"Ligne {idx} extraite: {len(non_empty_quotes)} texte(s)")
             
-            # UN SEUL LOG de résumé à la fin
             log_message("INFO", f"Extraction terminée: {len(self.extracted_texts)} textes extraits de {extracted_lines} lignes")
             
         except Exception as e:
@@ -354,6 +380,7 @@ class TextExtractor:
             'main_file': None,
             'asterix_file': None,
             'empty_file': None,
+            'glossary_file': None,  # ✅ NOUVEAU
             'mapping_files': []
         }
         
@@ -374,20 +401,29 @@ class TextExtractor:
             mapping_files = [
                 os.path.join(mapping_folder, f'{file_base}_mapping.txt'),
                 os.path.join(mapping_folder, f'{file_base}_asterix_mapping.txt'),
-                os.path.join(mapping_folder, f'{file_base}_empty_mapping.txt')
+                os.path.join(mapping_folder, f'{file_base}_empty_mapping.txt'),
+                os.path.join(mapping_folder, f'{file_base}_glossary_mapping.txt')  # ✅ NOUVEAU
             ]
             
+            # Mapping principal
             with open(mapping_files[0], 'w', encoding='utf-8', newline='') as mf:
                 for tag, ph in self.mapping.items():
                     mf.write(f"{ph} => {tag}\n")
             
+            # Mapping astérisques
             with open(mapping_files[1], 'w', encoding='utf-8', newline='') as amf:
                 for asterix, placeholder in self.asterix_mapping.items():
                     amf.write(f"{placeholder} => {asterix}\n")
             
+            # Mapping textes vides
             with open(mapping_files[2], 'w', encoding='utf-8', newline='') as emf:
                 for empty, placeholder in self.empty_mapping.items():
                     emf.write(f"{placeholder} => {empty}\n")
+            
+            # ✅ NOUVEAU : Mapping glossaire
+            with open(mapping_files[3], 'w', encoding='utf-8', newline='') as gmf:
+                for placeholder, term_info in self.glossary_mapping.items():
+                    gmf.write(f"{placeholder} => {term_info['original']} => {term_info['translation']}\n")
             
             result['mapping_files'] = mapping_files
             
@@ -407,7 +443,7 @@ class TextExtractor:
             # Écrire les fichiers de textes dans fichiers_a_traduire
             translate_folder = os.path.join(temp_folder, "fichiers_a_traduire")
             
-            # Fichier principal dans le dossier fichiers_a_traduire
+            # Fichier principal
             main_file = os.path.join(translate_folder, f'{file_base}.txt')
             with open(main_file, 'w', encoding='utf-8', newline='') as vf:
                 vf.writelines(self.extracted_texts)
@@ -427,6 +463,17 @@ class TextExtractor:
                     ef.writelines(self.empty_texts)
                 result['empty_file'] = empty_file
             
+            # ✅ NOUVEAU : Créer fichier glossaire seulement s'il y a du contenu
+            if self.glossary_mapping:
+                glossary_file = os.path.join(translate_folder, f'{file_base}_glossary.txt')
+                with open(glossary_file, 'w', encoding='utf-8', newline='') as gf:
+                    gf.write("# Fichier des termes du glossaire\n")
+                    gf.write("# Ces termes seront automatiquement traduits\n")
+                    gf.write("# NE PAS MODIFIER ce fichier\n\n")
+                    for placeholder, term_info in self.glossary_mapping.items():
+                        gf.write(f"{term_info['translation']}\n")
+                result['glossary_file'] = glossary_file
+            
             log_message("INFO", f"Fichiers d'extraction créés dans temporaires/{game_name}/")
             return result
             
@@ -435,9 +482,9 @@ class TextExtractor:
             raise
 
 # Fonction utilitaire pour compatibilité avec l'ancienne interface
-def extraire_textes(file_content, original_path):
+def extraire_textes_enhanced(file_content, original_path):
     """
-    Fonction d'extraction compatible avec l'ancienne interface
+    Fonction d'extraction avec support du glossaire
     
     Args:
         file_content (list): Contenu du fichier
@@ -451,11 +498,7 @@ def extraire_textes(file_content, original_path):
     validate_before_extraction(original_path)
     create_safety_backup(original_path)
 
-    # 2) (Optionnel) Préparer le dossier temporaire
-    # from core.file_manager import TempFileManager
-    # TempFileManager().ensure_temp_dir_for(original_path)  # Method not implemented
-
-    # 3) Lancer l'extraction
-    extractor = TextExtractor()
+    # 2) Lancer l'extraction avec glossaire
+    extractor = EnhancedTextExtractor()
     extractor.load_file_content(file_content, original_path)
     return extractor.extract_texts()

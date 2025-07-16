@@ -1,6 +1,6 @@
 # main.py
 # Traducteur Ren'Py Pro - Interface principale
-# v2.2.0 - Corrections finales des erreurs self
+# v2.3.0 - Corrections finales des erreurs
 
 """
 Traducteur Ren'Py Pro
@@ -31,6 +31,7 @@ except ImportError:
 from utils.config import config_manager
 from utils.logging import log_message, anonymize_path
 from utils.constants import VERSION, THEMES, WINDOW_CONFIG, MESSAGES, FILE_NAMES
+from ui.glossary_ui import show_glossary_manager
 
 # Gestion des fichiers
 from core.file_manager import file_manager, FileOpener, TempFileManager
@@ -41,6 +42,10 @@ from core.extraction import (
     get_file_base_name,
 )
 from utils.logging import extract_game_name
+
+# ✅ CORRECTION : Import des modules enhanced
+from core.extraction_enhanced import EnhancedTextExtractor, extraire_textes_enhanced
+from core.reconstruction_enhanced import EnhancedFileReconstructor, reconstruire_fichier_enhanced
 
 # Reconstruction
 from core.reconstruction import FileReconstructor
@@ -65,6 +70,9 @@ except ImportError:
         messagebox.showinfo("Tutoriel", "Module tutoriel non disponible")
     def check_first_launch():
         return False
+
+# ✅ CORRECTION : Variable globale pour l'instance
+app_instance = None
 
 class TraducteurRenPyPro:
     # =============================================================================
@@ -177,7 +185,6 @@ class TraducteurRenPyPro:
 
         log_message("INFO", f"=== DÉMARRAGE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
         log_message("INFO", "Dossiers organisés créés: temporaire, sauvegardes, avertissements, logs")
-    app_instance = None
 
     def setup_window(self):
         """Configure la fenêtre principale"""
@@ -194,7 +201,7 @@ class TraducteurRenPyPro:
         # Gestion de la fermeture
         self.root.protocol("WM_DELETE_WINDOW", self.fermer_application)
 
-    def check_imports():
+    def check_imports(self):
         """Vérifie que tous les modules nécessaires sont disponibles"""
         required_modules = [
             'tkinter', 'tkinterdnd2', 'core.extraction', 'core.reconstruction',
@@ -239,10 +246,13 @@ class TraducteurRenPyPro:
             print(f"❌ Erreur dans center_window: {e}")
     
     def check_tutorial(self):
-        """Vérifie si le tutoriel doit être affiché"""
+        """Vérifie si le tutoriel doit être affiché - VERSION INTELLIGENTE"""
         if check_first_launch():
-            log_message("INFO", "Premier lancement détecté - Affichage du tutoriel")
-            self.root.after(500, show_tutorial)
+            log_message("INFO", "Premier lancement détecté - Système intelligent activé")
+            # Afficher le tutoriel intelligent après un délai
+            self.root.after(500, self._show_first_launch_tutorial_smart)
+        else:
+            log_message("INFO", "Utilisateur expérimenté détecté - Pas de tutoriel automatique")
 
     # =============================================================================
     # MÉTHODES DE GESTION DE L'INTERFACE
@@ -264,6 +274,123 @@ class TraducteurRenPyPro:
         
         # Zone de contenu principal
         self.create_content_frame()
+
+    # 2. AJOUTER ces nouvelles méthodes dans la classe TraducteurRenPyPro :
+
+    def _show_first_launch_tutorial_smart(self):
+        """Version INTELLIGENTE : Maximum 3 tentatives avec messages adaptatifs"""
+        try:
+            from ui.tutorial import show_tutorial, show_minimal_tutorial, mark_tutorial_shown
+            from utils.constants import FILE_NAMES
+            
+            # Compter les tentatives
+            attempts_file = FILE_NAMES["tutorial_flag"].replace(".flag", "_attempts.txt")
+            attempts = self._get_tutorial_attempts(attempts_file)
+            
+            if attempts >= 3:
+                # 3 tentatives dépassées → Marquer définitivement comme vu
+                mark_tutorial_shown()
+                log_message("INFO", "3 tentatives de tutoriel dépassées - Marquage définitif")
+                return
+            
+            # Message adapté selon le nombre de tentatives
+            if attempts == 0:
+                title = "🎉 Bienvenue dans Traducteur Ren'Py Pro v2.3.0 !"
+                message = "C'est votre première utilisation !\n\n🎯 Découvrez toutes les nouveautés et fonctionnalités."
+                footer = "💡 Ce guide vous fera gagner du temps"
+            elif attempts == 1:
+                title = "🎯 Guide Traducteur Ren'Py Pro"
+                message = "Nous vous proposons à nouveau le guide.\n\n📚 Architecture refactorisée, glossaire permanent, validation avancée..."
+                footer = "💡 Beaucoup de nouveautés utiles à découvrir"
+            else:  # attempts == 2
+                title = "📚 Dernière proposition de guide"
+                message = "Dernière opportunité pour découvrir le guide.\n\n🚀 Après cela, accessible uniquement via le bouton '🎓 Aide'."
+                footer = "💡 Tentative 3/3 - Voulez-vous vraiment passer à côté ?"
+            
+            welcome_result = messagebox.askyesnocancel(
+                title,
+                f"{message}\n\n"
+                "🎓 Que souhaitez-vous faire ?\n\n"
+                "• Oui = 📖 Guide complet (toutes les fonctionnalités)\n"
+                "• Non = ⚡ Guide express (5 minutes)\n" 
+                "• Annuler = 🔄 Reporter au prochain lancement\n\n"
+                f"{footer}"
+            )
+            
+            if welcome_result is True:
+                # Guide complet consulté → Marquer définitivement
+                show_tutorial()
+                mark_tutorial_shown()
+                log_message("INFO", f"Tentative {attempts + 1}/3 : Guide complet consulté - Marqué définitivement")
+                
+            elif welcome_result is False:
+                # Guide express consulté → Marquer définitivement
+                show_minimal_tutorial()
+                mark_tutorial_shown()
+                log_message("INFO", f"Tentative {attempts + 1}/3 : Guide express consulté - Marqué définitivement")
+                
+            else:
+                # Reporter → Incrémenter compteur
+                self._increment_tutorial_attempts(attempts_file)
+                self._show_help_reminder_smart(attempts + 1)
+                log_message("INFO", f"Tentative {attempts + 1}/3 : Guide reporté")
+                
+        except Exception as e:
+            log_message("WARNING", f"Erreur tutoriel intelligent: {e}")
+            # Fallback : Marquer comme vu pour éviter les boucles
+            try:
+                mark_tutorial_shown()
+            except:
+                pass
+
+    def _get_tutorial_attempts(self, attempts_file):
+        """Récupère le nombre de tentatives de tutoriel"""
+        try:
+            if os.path.exists(attempts_file):
+                with open(attempts_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    return int(content) if content.isdigit() else 0
+            return 0
+        except Exception as e:
+            log_message("WARNING", f"Erreur lecture tentatives: {e}")
+            return 0
+
+    def _increment_tutorial_attempts(self, attempts_file):
+        """Incrémente le compteur de tentatives"""
+        try:
+            attempts = self._get_tutorial_attempts(attempts_file) + 1
+            
+            # S'assurer que le dossier existe
+            os.makedirs(os.path.dirname(attempts_file), exist_ok=True)
+            
+            with open(attempts_file, 'w', encoding='utf-8') as f:
+                f.write(str(attempts))
+            
+            log_message("INFO", f"Compteur tentatives tutoriel: {attempts}/3")
+            
+        except Exception as e:
+            log_message("WARNING", f"Erreur incrément tentatives: {e}")
+
+    def _show_help_reminder_smart(self, attempt_number):
+        """Affiche un rappel adaptatif selon le nombre de tentatives"""
+        try:
+            if attempt_number == 1:
+                reminder_text = "💡 Guide disponible via '🎓 Aide' - Vous avez encore 2 chances au prochain lancement"
+            elif attempt_number == 2:
+                reminder_text = "💡 Guide disponible via '🎓 Aide' - Plus qu'une chance au prochain lancement !"
+            else:  # attempt_number == 3
+                reminder_text = "💡 Aide toujours disponible via le bouton '🎓 Aide' en haut à droite"
+            
+            # Afficher dans la barre de statut
+            if hasattr(self, 'label_stats') and self.label_stats:
+                current_stats = self.label_stats.cget("text")
+                self.label_stats.config(text=reminder_text)
+                
+                # Restaurer après 7 secondes (plus long pour être sûr qu'il soit vu)
+                self.root.after(7000, lambda: self.label_stats.config(text=current_stats))
+            
+        except Exception as e:
+            log_message("WARNING", f"Erreur rappel intelligent: {e}")
 
     def create_header(self):
         """Crée l'en-tête de l'application - VERSION THÈME UNIFORME"""
@@ -425,82 +552,440 @@ class TraducteurRenPyPro:
         btn_reinit.grid(row=0, column=3, sticky="nsew", padx=5, pady=8)
 
     def create_actions_frame(self):
-            """Crée le frame des actions principales - VERSION UNIFIÉE"""
-            theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
-            
-            frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
-            frame_actions.pack(padx=20, pady=5)
-            
-            # 9 colonnes : 2 verts + 1 mode + 6 utilitaires
-            for col in range(9):
-                frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
-            
-            # Boutons principaux (SANS TODO)
-            btn_extraire = tk.Button(
-                frame_actions, text="⚡ Extraire", font=('Segoe UI Emoji', 11),
-                bg='#28a745', fg='#000000', activebackground='#1e7e34',
-                bd=1, relief='solid', command=self.extraire_textes
-            )
-            btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
+        """Crée le frame des actions principales - VERSION AVEC GLOSSAIRE"""
+        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+        
+        frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
+        frame_actions.pack(padx=20, pady=5)
+        
+        # ✅ MODIFICATION : 10 colonnes au lieu de 9 pour inclure le glossaire
+        for col in range(10):
+            frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
+        
+        # Boutons principaux
+        btn_extraire = tk.Button(
+            frame_actions, text="⚡ Extraire", font=('Segoe UI Emoji', 11),
+            bg='#28a745', fg='#000000', activebackground='#1e7e34',
+            bd=1, relief='solid', command=self.extraire_textes_enhanced
+        )
+        btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
 
-            btn_reconstruire = tk.Button(
-                frame_actions, text="🔧 Reconstruire", font=('Segoe UI Emoji', 11),
-                bg='#28a745', fg='#000000', activebackground='#1e7e34',
-                bd=1, relief='solid', command=self.reconstruire_fichier
-            )
-            btn_reconstruire.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
+        btn_reconstruire = tk.Button(
+            frame_actions, text="🔧 Reconstruire", font=('Segoe UI Emoji', 11),
+            bg='#28a745', fg='#000000', activebackground='#1e7e34',
+            bd=1, relief='solid', command=self.reconstruire_fichier_enhanced
+        )
+        btn_reconstruire.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
 
-            # Bouton mode d'entrée
-            self.bouton_input_mode = tk.Button(
-                frame_actions, text="🎯 D&D", font=('Segoe UI Emoji', 10),
-                bg='#17a2b8', fg='#000000', activebackground='#138496',
-                bd=1, relief='solid', command=self.toggle_input_mode
-            )
-            self.bouton_input_mode.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
+        # Bouton mode d'entrée
+        self.bouton_input_mode = tk.Button(
+            frame_actions, text="🎯 D&D", font=('Segoe UI Emoji', 10),
+            bg='#17a2b8', fg='#000000', activebackground='#138496',
+            bd=1, relief='solid', command=self.toggle_input_mode
+        )
+        self.bouton_input_mode.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
 
-            # Utilitaires (colonnes 3 à 8)
-            utilitaires = [
-                ("🧹 Nettoyer", self.nettoyer_page, '#ffc107'),
-                ("📁 Temporaire", self.ouvrir_dossier_temporaire, '#ffc107'),
-                ("⚠️ Avertissements", self.ouvrir_avertissements, '#dc3545'),
-                (f"📂 Auto : {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}", 
-                self.handle_toggle_auto_open, '#ffc107'),
-                (f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}", 
-                self.toggle_validation, '#ffc107'),
-                ("🎓 Aide", self.afficher_tutoriel, '#ffc107')  # Nouveau bouton tutoriel
-            ]
+        # ✅ NOUVEAU : Bouton Glossaire
+        btn_glossaire = tk.Button(
+            frame_actions, text="📚 Glossaire", font=('Segoe UI Emoji', 10),
+            bg='#6f42c1', fg='#000000', activebackground='#5a359a',
+            bd=1, relief='solid', command=self.ouvrir_glossaire
+        )
+        btn_glossaire.grid(row=0, column=3, sticky="nsew", padx=5, pady=15)
+
+        # Utilitaires (décalés d'une colonne)
+        utilitaires = [
+            ("🧹 Nettoyer", self.nettoyer_page, '#ffc107'),
+            ("📁 Temporaire", self.ouvrir_dossier_temporaire, '#ffc107'),
+            ("⚠️ Avertissements", self.ouvrir_avertissements, '#ffc107'),
+            (f"📂 Auto : {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}", 
+            self.handle_toggle_auto_open, '#ffc107'),
+            (f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}", 
+            self.toggle_validation, '#ffc107'),
+            ("🎓 Aide", self.afficher_aide_intelligente, '#ffc107')
+        ]
+        
+        for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=4):
+            btn = tk.Button(frame_actions, text=txt, font=('Segoe UI Emoji', 10),
+                        bg=couleur, fg='#000000' if couleur != '#dc3545' else '#ffffff', 
+                        activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37',
+                        bd=1, relief='solid', command=cmd)
+            btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
             
-            for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
-                btn = tk.Button(frame_actions, text=txt, font=('Segoe UI Emoji', 10),
-                            bg=couleur, fg='#000000' if couleur != '#6f42c1' else '#ffffff', 
-                            activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37' if couleur == '#dc3545' else '#5a359a',
-                            bd=1, relief='solid', command=cmd)
-                btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
+            if cmd == self.handle_toggle_auto_open:
+                self.bouton_auto_open = btn
+            elif cmd == self.toggle_validation:
+                self.bouton_validation = btn
+
+    def afficher_aide_intelligente(self):
+        """Affiche l'aide selon l'expérience utilisateur - VERSION INTELLIGENTE"""
+        try:
+            # Déterminer le type d'utilisateur
+            user_type = self._determine_user_type()
+            
+            if user_type == "nouveau":
+                # Nouvel utilisateur (< 3 jours) : Proposer guide complet d'abord
+                result = messagebox.askyesnocancel(
+                    "🎓 Aide Traducteur Ren'Py Pro",
+                    "Vous semblez encore découvrir l'application.\n\n"
+                    "Que souhaitez-vous consulter ?\n\n"
+                    "• Oui = 📖 Guide complet (recommandé)\n"
+                    "• Non = 📋 Menu d'aide (accès rapide aux sections)\n"
+                    "• Annuler = 🆕 Nouveautés v2.3.0 uniquement"
+                )
                 
-                if cmd == self.handle_toggle_auto_open:
-                    self.bouton_auto_open = btn
-                elif cmd == self.toggle_validation:
-                    self.bouton_validation = btn
+                if result is True:
+                    from ui.tutorial import show_tutorial
+                    show_tutorial()
+                    log_message("INFO", "Nouvel utilisateur : Guide complet demandé")
+                elif result is False:
+                    from ui.tutorial import show_help_menu
+                    show_help_menu()
+                    log_message("INFO", "Nouvel utilisateur : Menu d'aide demandé")
+                else:
+                    from ui.tutorial import show_whats_new
+                    show_whats_new()
+                    log_message("INFO", "Nouvel utilisateur : Nouveautés demandées")
+                    
+            elif user_type == "recent":
+                # Utilisateur récent (3-7 jours) : Choix équilibré
+                result = messagebox.askyesno(
+                    "🎓 Centre d'aide",
+                    "Que souhaitez-vous consulter ?\n\n"
+                    "• Oui = 📋 Menu d'aide (accès à toutes les sections)\n"
+                    "• Non = 🆕 Nouveautés v2.3.0 directement"
+                )
+                
+                if result:
+                    from ui.tutorial import show_help_menu
+                    show_help_menu()
+                    log_message("INFO", "Utilisateur récent : Menu d'aide demandé")
+                else:
+                    from ui.tutorial import show_whats_new
+                    show_whats_new()
+                    log_message("INFO", "Utilisateur récent : Nouveautés demandées")
+            else:
+                # Utilisateur expérimenté (> 7 jours) : Directement le menu
+                from ui.tutorial import show_help_menu
+                show_help_menu()
+                log_message("INFO", "Utilisateur expérimenté : Menu d'aide ouvert directement")
+                
+        except Exception as e:
+            log_message("ERREUR", "Erreur aide intelligente", e)
+            # Fallback vers le menu d'aide
+            try:
+                from ui.tutorial import show_help_menu
+                show_help_menu()
+            except:
+                self.afficher_tutoriel()
+
+    def _determine_user_type(self):
+        """Détermine le type d'utilisateur selon son ancienneté"""
+        try:
+            import datetime
+            from utils.constants import FILE_NAMES
+            
+            tutorial_flag_file = FILE_NAMES["tutorial_flag"]
+            
+            if not os.path.exists(tutorial_flag_file):
+                return "nouveau"  # Pas de flag = très nouveau
+            
+            # Calculer l'ancienneté
+            creation_time = os.path.getctime(tutorial_flag_file)
+            creation_date = datetime.datetime.fromtimestamp(creation_time)
+            now = datetime.datetime.now()
+            days_since_first_use = (now - creation_date).days
+            
+            if days_since_first_use <= 3:
+                return "nouveau"        # 0-3 jours
+            elif days_since_first_use <= 7:
+                return "recent"         # 4-7 jours  
+            else:
+                return "experimente"    # 8+ jours
+            
+        except Exception as e:
+            log_message("WARNING", f"Erreur détermination type utilisateur: {e}")
+            return "experimente"  # Par défaut, traiter comme expérimenté
+
+    def ouvrir_glossaire(self):
+        """Ouvre le gestionnaire de glossaire"""
+        try:
+            show_glossary_manager(self.root)
+            log_message("INFO", "Gestionnaire de glossaire ouvert")
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors de l'ouverture du glossaire", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le glossaire:\n{str(e)}")
+
+    def extraire_textes_enhanced(self):
+        """Extrait les textes avec support du glossaire"""
+        if not self.file_content:
+            mode_info = "D&D" if self.input_mode == "drag_drop" else "Ctrl+V"
+            messagebox.showwarning("⚠️ Erreur", 
+                f"Chargez d'abord un fichier .rpy ou collez du contenu.\n"
+                f"Mode actuel: {mode_info}")
+            return
+        try:
+            self.label_stats.config(text="⚙️ Extraction en cours...")
+            self.root.update()
+            
+            # Sauvegarde de sécurité
+            if self.original_path:
+                backup_result = create_safety_backup(self.original_path)
+                if not backup_result['success']:
+                    log_message("WARNING", f"Sauvegarde échouée: {backup_result['error']}")
+            
+            # ✅ CORRECTION : Utiliser l'import de fonction au lieu de self
+            from core.extraction_enhanced import extraire_textes_enhanced as extract_func
+            self.extraction_results = extract_func(self.file_content, self.original_path)
+            
+            # Mise à jour des compteurs
+            from core.extraction_enhanced import EnhancedTextExtractor
+            extractor = EnhancedTextExtractor()
+            extractor.load_file_content(self.file_content, self.original_path)
+            results = extractor.extract_texts()
+            
+            self.extraction_results = results
+            self.last_extraction_time = extractor.extraction_time
+            self.extraction_results['extracted_count'] = extractor.extracted_count
+            self.extraction_results['asterix_count'] = extractor.asterix_count
+            self.extraction_results['empty_count'] = extractor.empty_count
+            
+            # Gestion de l'ouverture des fichiers
+            files_to_open = [f for f in [
+                self.extraction_results.get('main_file'),
+                self.extraction_results.get('asterix_file'), 
+                self.extraction_results.get('empty_file'),
+                self.extraction_results.get('glossary_file')  # ✅ NOUVEAU
+            ] if f]
+            
+            auto_open_enabled = config_manager.is_auto_open_enabled()
+            
+            if auto_open_enabled and files_to_open:
+                FileOpener.open_files(files_to_open, True)
+                open_info = f"\n📂 {len(files_to_open)} fichier(s) ouvert(s) automatiquement"
+            elif not auto_open_enabled and files_to_open:
+                result = messagebox.askyesno("📂 Ouvrir les fichiers ?",
+                    f"Extraction terminée !\n\n📝 {extractor.extracted_count} textes extraits\n\n"
+                    f"Auto-Open désactivé. Ouvrir les {len(files_to_open)} fichier(s) ?")
+                
+                if result:
+                    FileOpener.open_files(files_to_open, True)
+                    open_info = f"\n📂 {len(files_to_open)} fichier(s) ouvert(s) sur demande"
+                else:
+                    open_info = f"\n💡 {len(files_to_open)} fichier(s) créé(s) (non ouverts)"
+            else:
+                open_info = ""
+            
+            # Message de succès avec glossaire
+            message = f"✅ Extraction terminée en {self.last_extraction_time:.2f}s !"
+            message += f"\n\n📝 {extractor.extracted_count} textes extraits"
+            
+            if extractor.asterix_count > 0:
+                message += f"\n⭐ {extractor.asterix_count} expressions entre astérisques"
+            if extractor.empty_count > 0:
+                message += f"\n🔳 {extractor.empty_count} textes vides/espaces"
+            if len(extractor.glossary_mapping) > 0:
+                message += f"\n📚 {len(extractor.glossary_mapping)} termes du glossaire protégés"
+            
+            message += open_info
+            
+            # Info sur le mode source
+            if hasattr(self, 'text_mode') and self.text_mode == "clipboard":
+                message += f"\n\n📋 Source: Contenu du presse-papier"
+            
+            self.label_stats.config(text=f"📊 {extractor.extracted_count} textes extraits | ⏱️ {self.last_extraction_time:.2f}s")
+            messagebox.showinfo("🎉 Extraction terminée", message)
+            
+        except Exception as e:
+            log_message("ERREUR", "Erreur extraction avec glossaire", e)
+            messagebox.showerror("❌ Erreur", f"Erreur pendant l'extraction:\n{str(e)}")
+            self.label_stats.config(text="❌ Erreur lors de l'extraction")
+
+    def reconstruire_fichier_enhanced(self):
+        """Reconstruit avec support du glossaire"""
+        if not self.file_content or not self.original_path:
+            messagebox.showerror("❌ Erreur", MESSAGES["no_file_loaded"])
+            return
+        
+        try:
+            # Vérifier que les fichiers d'extraction existent
+            from core.extraction_enhanced import get_file_base_name
+            file_base = get_file_base_name(self.original_path)
+            
+            if not self.extraction_results:
+                messagebox.showerror("❌ Erreur", "Effectuez d'abord l'extraction du fichier")
+                return
+            
+            # Validation si activée
+            if config_manager.is_validation_enabled():
+                extracted_count = self.extraction_results.get('extracted_count', 0)
+                asterix_count = self.extraction_results.get('asterix_count', 0)
+                empty_count = self.extraction_results.get('empty_count', 0)
+                
+                validation_result = validate_before_reconstruction(file_base, extracted_count, asterix_count, empty_count)
+                
+                if not validation_result['overall_valid']:
+                    errors = []
+                    if validation_result['main_file'] and not validation_result['main_file']['valid']:
+                        errors.extend(validation_result['main_file'].get('errors', []))
+                    
+                    error_message = "Validation échouée:\n\n" + "\n".join(f"• {error}" for error in errors[:3])
+                    if len(errors) > 3:
+                        error_message += f"\n... et {len(errors) - 3} autres erreurs"
+                    
+                    result = messagebox.askyesno("⚠️ Validation échouée", error_message + "\n\nContinuer quand même ?")
+                    if not result:
+                        return
+            
+            # Gestion du mode de sauvegarde
+            save_mode = 'new_file'
+            
+            if hasattr(self, 'text_mode') and self.text_mode == "file":
+                if not self._save_mode:
+                    save_dialog = SaveModeDialog(self.root)
+                    self._save_mode = save_dialog.show()
+                    
+                    if not self._save_mode:
+                        return
+                save_mode = self._save_mode
+            elif hasattr(self, 'text_mode') and self.text_mode == "clipboard":
+                save_mode = 'new_file'
+            
+            # ✅ CORRECTION : Utiliser l'import de fonction au lieu de self
+            self.label_stats.config(text="🔧 Reconstruction en cours...")
+            self.root.update()
+            
+            start_time = time.time()
+            from core.reconstruction_enhanced import reconstruire_fichier_enhanced as reconstruct_func
+            result = reconstruct_func(self.file_content, self.original_path, save_mode)
+            self.last_reconstruction_time = time.time() - start_time
+            
+            if result:
+                # Contrôle de cohérence si validation activée
+                if config_manager.is_validation_enabled():
+                    coherence_result = check_file_coherence(result['save_path'])
+                    
+                    if coherence_result['issues_found'] > 0:
+                        response = messagebox.askyesnocancel(
+                            "⚠️ Problèmes de cohérence détectés",
+                            f"{coherence_result['issues_found']} problème(s) détecté(s) dans la traduction.\n\n"
+                            f"Un fichier d'avertissement a été créé.\n\n"
+                            f"• Oui = Ouvrir le fichier d'avertissement\n"
+                            f"• Non = Continuer sans ouvrir\n"
+                            f"• Annuler = Voir les détails"
+                        )
+                        
+                        if response is True:
+                            try:
+                                if coherence_result.get('warning_file'):
+                                    FileOpener.open_files([coherence_result['warning_file']], True)
+                            except Exception as e:
+                                log_message("WARNING", f"Impossible d'ouvrir le fichier d'avertissement", e)
+                        elif response is None:
+                            self._show_coherence_issues(coherence_result['issues'])
+                
+                # Message de succès
+                self.label_stats.config(text=f"✅ Reconstruction terminée | ⏱️ {self.last_reconstruction_time:.2f}s")
+                
+                # Ouvrir le fichier reconstruit si demandé
+                try:
+                    FileOpener.open_files([result['save_path']], config_manager.is_auto_open_enabled())
+                except:
+                    pass
+                
+                # Messages adaptés selon le mode
+                if hasattr(self, 'text_mode') and self.text_mode == "clipboard":
+                    messagebox.showinfo("🎉 Reconstruction terminée", 
+                        f"✅ Fichier traduit créé avec succès !\n\n"
+                        f"📁 Fichier: {os.path.basename(result['save_path'])}\n"
+                        f"📋 Source: Contenu du presse-papier\n"
+                        f"📚 Glossaire: Termes appliqués automatiquement\n"
+                        f"⏱️ Temps: {self.last_reconstruction_time:.2f}s")
+                else:
+                    # Proposer de passer au fichier suivant en mode dossier
+                    if file_manager.is_folder_mode:
+                        self.handle_next_file()
+                    else:
+                        messagebox.showinfo("🎉 Reconstruction terminée", 
+                            f"✅ Fichier traduit créé avec succès !\n\n"
+                            f"📁 Fichier: {os.path.basename(result['save_path'])}\n"
+                            f"📚 Glossaire: Termes appliqués automatiquement\n"
+                            f"⏱️ Temps: {self.last_reconstruction_time:.2f}s")
+            else:
+                self.label_stats.config(text="❌ Erreur lors de la reconstruction")
+                messagebox.showerror("❌ Erreur", "Erreur lors de la reconstruction")
+                
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors de la reconstruction avec glossaire", e)
+            messagebox.showerror("❌ Erreur", f"Erreur lors de la reconstruction:\n{str(e)}")
+            self.label_stats.config(text="❌ Erreur lors de la reconstruction")
+
+    def appliquer_theme_enhanced(self):
+        """Application du thème avec support simplifié"""
+        try:
+            from ui.themes import theme_manager
+            
+            current_mode = "dark" if config_manager.is_dark_mode_enabled() else "light"
+            theme_manager.set_theme(current_mode)
+            theme = theme_manager.get_theme()
+            
+            # Appliquer le thème à la fenêtre principale
+            self.root.configure(bg=theme["bg"])
+
+            # Widgets principaux
+            widgets_to_update = [
+                (self.title_label, theme["bg"], theme["fg"]),
+                (self.subtitle_label, theme["bg"], theme["fg"]),
+                (self.label_chemin, theme["frame_bg"], theme["accent"]),
+                (self.label_stats, theme["frame_bg"], theme["fg"])
+            ]
+
+            for widget, bg_color, fg_color in widgets_to_update:
+                if widget:
+                    try:
+                        widget.configure(bg=bg_color, fg=fg_color)
+                    except Exception as e:
+                        print(f"⚠️ DEBUG - Erreur configuration widget: {e}")
+
+            # Frame info
+            if self.frame_info:
+                try:
+                    self.frame_info.configure(bg=theme["frame_bg"])
+                except Exception as e:
+                    print(f"⚠️ DEBUG - Erreur configuration frame_info: {e}")
+
+            # Zone de texte simplifiée
+            if self.text_area and hasattr(self.text_area, 'set_theme'):
+                try:
+                    self.text_area.set_theme(current_mode)
+                except Exception as e:
+                    print(f"⚠️ DEBUG - Erreur configuration text_area: {e}")
+
+            # Mise à jour des couleurs de boutons
+            self._update_button_text_colors(theme)
+
+            print(f"✅ DEBUG - Thème {current_mode} appliqué avec succès")
+            
+        except Exception as e:
+            print(f"💥 DEBUG - Erreur critique appliquer_theme: {e}")
+            log_message("WARNING", f"Erreur application du thème", e)
 
     def create_content_frame(self):
-        """Crée la zone de contenu - VERSION UNIFIÉE avec modes"""
+        """Crée la zone de contenu - VERSION AMÉLIORÉE avec numéros de ligne"""
         theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
         
         frame_content = tk.Frame(self.root, bg=theme["bg"])
         frame_content.pack(expand=True, fill='both', padx=20, pady=(0, 10))
         
-        text_frame = tk.Frame(frame_content, bg=theme["bg"])
-        text_frame.pack(expand=True, fill='both')
-        
-        self.text_area = ScrolledText(text_frame, font=('Cascadia Code', 10),
-                                    wrap=tk.WORD, borderwidth=0, highlightthickness=1,
-                                    bg=theme["entry_bg"], fg=theme["entry_fg"],
-                                    selectbackground=theme["select_bg"], 
-                                    selectforeground=theme["select_fg"],
-                                    insertbackground=theme["entry_fg"])
+        # ScrolledText
+        self.text_area = ScrolledText(
+            frame_content,
+            font=('Cascadia Code', 10),
+            bg=theme["entry_bg"],
+            fg=theme["entry_fg"]
+        )
         self.text_area.pack(expand=True, fill='both')
-        
-        # Configuration mode initial (SANS raccourcis fixes)
+        # Configuration mode initial
         try:
             self.configure_input_mode()
         except Exception as e:
@@ -539,81 +1024,79 @@ class TraducteurRenPyPro:
     # =============================================================================
 
     def toggle_dark_mode(self):
-            """✅ BASCULEMENT DE THÈME CORRIGÉ - Application complète"""
+        """✅ BASCULEMENT DE THÈME CORRIGÉ - Application complète"""
+        try:
+            # 1. Met à jour la config
+            config_manager.toggle_dark_mode()
+
+            # 2. ✅ NOUVEAU : Appliquer le thème immédiatement au theme_manager
+            from ui.themes import theme_manager
+            new_theme = "dark" if config_manager.is_dark_mode_enabled() else "light"
+            theme_manager.set_theme(new_theme)
+            theme = theme_manager.get_theme()
+
+            # 3. ✅ APPLIQUER LE THÈME À LA FENÊTRE PRINCIPALE EN PREMIER
+            self.root.configure(bg=theme["bg"])
+
+            # 4. Sauvegarder l'état avant de recréer
+            current_file_content = self.file_content.copy() if self.file_content else []
+            current_original_path = self.original_path
+            current_extraction_results = self.extraction_results
+            current_last_extraction_time = self.last_extraction_time
+            current_last_reconstruction_time = self.last_reconstruction_time
+            current_save_mode = self._save_mode
+            current_text_mode = getattr(self, 'text_mode', 'empty')
+            current_input_mode = getattr(self, 'input_mode', 'drag_drop')
+            current_source_info = getattr(self, 'source_info', None)
+            current_clipboard_counter = getattr(self, 'clipboard_counter', 0)
+
+            # 5. ✅ DÉTRUIRE ET RECRÉER L'INTERFACE COMPLÈTEMENT
+            for widget in self.root.winfo_children():
+                widget.destroy()
+
+            # 6. Recréer l'interface avec le nouveau thème
+            self.create_interface()
+
+            # 7. ✅ FORCER L'APPLICATION DU THÈME À TOUS LES WIDGETS
+            self.appliquer_theme_complet()
+
+            # 8. Restaurer l'état complet
+            self.file_content = current_file_content
+            self.original_path = current_original_path
+            self.extraction_results = current_extraction_results
+            self.last_extraction_time = current_last_extraction_time
+            self.last_reconstruction_time = current_last_reconstruction_time
+            self._save_mode = current_save_mode
+            self.text_mode = current_text_mode
+            self.input_mode = current_input_mode
+            self.source_info = current_source_info
+            self.clipboard_counter = current_clipboard_counter
+
+            # 9. Restaurer l'affichage si un fichier était chargé
+            if self.original_path and self.file_content:
+                self.label_chemin.config(text=f"📄 {self.original_path}")
+                self.text_area.delete('1.0', tk.END)
+                self.text_area.insert(tk.END, ''.join(self.file_content))
+                line_count = len(self.file_content)
+                self.label_stats.config(text=f"📊 {line_count} lignes chargées")
+            
+            # 10. Reconfigurer le mode d'entrée
             try:
-                # 1. Met à jour la config
-                config_manager.toggle_dark_mode()
-
-                # 2. ✅ NOUVEAU : Appliquer le thème immédiatement au theme_manager
-                from ui.themes import theme_manager
-                new_theme = "dark" if config_manager.is_dark_mode_enabled() else "light"
-                theme_manager.set_theme(new_theme)
-                theme = theme_manager.get_theme()
-
-                # 3. ✅ APPLIQUER LE THÈME À LA FENÊTRE PRINCIPALE EN PREMIER
-                self.root.configure(bg=theme["bg"])
-
-                # 4. Sauvegarder l'état avant de recréer
-                current_file_content = self.file_content.copy() if self.file_content else []
-                current_original_path = self.original_path
-                current_extraction_results = self.extraction_results
-                current_last_extraction_time = self.last_extraction_time
-                current_last_reconstruction_time = self.last_reconstruction_time
-                current_save_mode = self._save_mode
-                current_text_mode = getattr(self, 'text_mode', 'empty')
-                current_input_mode = getattr(self, 'input_mode', 'drag_drop')
-                current_source_info = getattr(self, 'source_info', None)
-                current_clipboard_counter = getattr(self, 'clipboard_counter', 0)
-
-                # 5. ✅ DÉTRUIRE ET RECRÉER L'INTERFACE COMPLÈTEMENT
-                for widget in self.root.winfo_children():
-                    widget.destroy()
-
-                # 6. Recréer l'interface avec le nouveau thème
-                self.create_interface()
-
-                # 7. ✅ FORCER L'APPLICATION DU THÈME À TOUS LES WIDGETS
-                self.appliquer_theme_complet()
-
-                # 8. Restaurer l'état complet
-                self.file_content = current_file_content
-                self.original_path = current_original_path
-                self.extraction_results = current_extraction_results
-                self.last_extraction_time = current_last_extraction_time
-                self.last_reconstruction_time = current_last_reconstruction_time
-                self._save_mode = current_save_mode
-                self.text_mode = current_text_mode
-                self.input_mode = current_input_mode
-                self.source_info = current_source_info
-                self.clipboard_counter = current_clipboard_counter
-
-                # 9. Restaurer l'affichage si un fichier était chargé
-                if self.original_path and self.file_content:
-                    self.label_chemin.config(text=f"📄 {self.original_path}")
-                    self.text_area.delete('1.0', tk.END)
-                    self.text_area.insert(tk.END, ''.join(self.file_content))
-                    line_count = len(self.file_content)
-                    self.label_stats.config(text=f"📊 {line_count} lignes chargées")
-                
-                # 10. Reconfigurer le mode d'entrée
-                try:
-                    self.configure_input_mode()
-                    self._update_drag_drop_display()
-                except Exception as e:
-                    print(f"⚠️ DEBUG - Erreur reconfig après toggle theme: {e}")
-                
-                print(f"✅ DEBUG - Basculement vers thème {new_theme} terminé avec succès")
-                
+                self.configure_input_mode()
+                self._update_drag_drop_display()
             except Exception as e:
-                print(f"💥 DEBUG - Erreur toggle_dark_mode: {e}")
-                log_message("ERREUR", "Erreur basculement thème", e)
+                print(f"⚠️ DEBUG - Erreur reconfig après toggle theme: {e}")
+            
+            print(f"✅ DEBUG - Basculement vers thème {new_theme} terminé avec succès")
+            
+        except Exception as e:
+            print(f"💥 DEBUG - Erreur toggle_dark_mode: {e}")
+            log_message("ERREUR", "Erreur basculement thème", e)
 
-    def get_current_game_name():
+    def get_current_game_name(self):
         """Récupère le nom du jeu actuellement chargé"""
-        global app_instance
-        if app_instance and app_instance.original_path:
-            from utils.logging import extract_game_name
-            return extract_game_name(app_instance.original_path)
+        if self.original_path:
+            return extract_game_name(self.original_path)
         return "Projet_Inconnu"
 
     def appliquer_theme(self):
@@ -681,46 +1164,46 @@ class TraducteurRenPyPro:
             log_message("WARNING", f"Erreur application du thème", e)
 
     def appliquer_theme_complet(self):
-            """✅ Application complète du thème - CORRECTION ERREUR"""
-            try:
-                from ui.themes import theme_manager
-                theme = theme_manager.get_theme()
+        """✅ Application complète du thème - CORRECTION ERREUR"""
+        try:
+            from ui.themes import theme_manager
+            theme = theme_manager.get_theme()
 
-                # Appliquer à la fenêtre principale
-                self.root.configure(bg=theme["bg"])
+            # Appliquer à la fenêtre principale
+            self.root.configure(bg=theme["bg"])
 
-                # ✅ MISE À JOUR SPÉCIFIQUE DES WIDGETS PRINCIPAUX
-                widgets_to_update = [
-                    (self.title_label, "title"),
-                    (self.subtitle_label, "subtitle"), 
-                    (self.label_chemin, "path_label"),
-                    (self.label_stats, "stats_label")
-                ]
+            # ✅ MISE À JOUR SPÉCIFIQUE DES WIDGETS PRINCIPAUX
+            widgets_to_update = [
+                (self.title_label, "title"),
+                (self.subtitle_label, "subtitle"), 
+                (self.label_chemin, "path_label"),
+                (self.label_stats, "stats_label")
+            ]
 
-                for widget, widget_type in widgets_to_update:
-                    if widget:
-                        theme_manager.apply_to_widget(widget, widget_type)
+            for widget, widget_type in widgets_to_update:
+                if widget:
+                    theme_manager.apply_to_widget(widget, widget_type)
 
-                # ✅ MISE À JOUR DE LA ZONE DE TEXTE
-                if self.text_area:
-                    self.text_area.configure(
-                        bg=theme["entry_bg"],
-                        fg=theme["entry_fg"],
-                        selectbackground=theme["select_bg"],
-                        selectforeground=theme["select_fg"],
-                        insertbackground=theme["entry_fg"],
-                        highlightbackground=theme["frame_bg"],
-                        highlightcolor=theme["accent"]
-                    )
+            # ✅ MISE À JOUR DE LA ZONE DE TEXTE
+            if self.text_area:
+                self.text_area.configure(
+                    bg=theme["entry_bg"],
+                    fg=theme["entry_fg"],
+                    selectbackground=theme["select_bg"],
+                    selectforeground=theme["select_fg"],
+                    insertbackground=theme["entry_fg"],
+                    highlightbackground=theme["frame_bg"],
+                    highlightcolor=theme["accent"]
+                )
 
-                # ✅ MISE À JOUR DES FRAMES
-                if self.frame_info:
-                    self.frame_info.configure(bg=theme["frame_bg"])
+            # ✅ MISE À JOUR DES FRAMES
+            if self.frame_info:
+                self.frame_info.configure(bg=theme["frame_bg"])
 
-                print(f"✅ DEBUG - Thème {theme_manager.current_theme} appliqué complètement")
+            print(f"✅ DEBUG - Thème {theme_manager.current_theme} appliqué complètement")
 
-            except Exception as e:
-                print(f"⚠️ DEBUG - Erreur appliquer_theme_complet: {e}")
+        except Exception as e:
+            print(f"⚠️ DEBUG - Erreur appliquer_theme_complet: {e}")
 
     def _update_button_text_colors(self, theme):
         """✅ NOUVELLE MÉTHODE : Met à jour les couleurs de texte des boutons"""
@@ -732,11 +1215,11 @@ class TraducteurRenPyPro:
             buttons_to_update = [
                 # Boutons qui gardent toujours du texte noir
                 (self.bouton_theme, "#000000"),  # Toujours noir sur jaune
-                
-                # Boutons qui s'adaptent au thème
                 (getattr(self, 'bouton_auto_open', None), "#000000"),  # Noir sur jaune
                 (getattr(self, 'bouton_validation', None), "#000000"),  # Noir sur jaune
-                (getattr(self, 'bouton_input_mode', None), button_text_color),  # S'adapte
+                
+                # ✅ CORRECTION : Bouton input_mode TOUJOURS noir
+                (getattr(self, 'bouton_input_mode', None), "#000000"),  # ✅ TOUJOURS NOIR
             ]
             
             for button, text_color in buttons_to_update:
@@ -786,47 +1269,6 @@ class TraducteurRenPyPro:
                     self._collect_frames_recursive(child, frame_list)
         except Exception as e:
             print(f"⚠️ DEBUG - Erreur récursion frames: {e}")
-
-    def _update_all_buttons_theme(self, theme):
-        """✅ Met à jour tous les boutons avec les bonnes couleurs de thème"""
-        try:
-            from ui.themes import theme_manager
-            
-            # Boutons spécifiques avec leurs couleurs
-            button_configs = [
-                (self.bouton_theme, "yellow"),
-                (self.bouton_quitter, "red"),
-                (getattr(self, 'bouton_auto_open', None), "yellow"),
-                (getattr(self, 'bouton_validation', None), "yellow"),
-                (getattr(self, 'bouton_input_mode', None), "purple")
-            ]
-            
-            for button, color_type in button_configs:
-                if button:
-                    colors = theme_manager.get_button_colors(color_type)
-                    try:
-                        button.configure(fg=colors["fg"])
-                    except:
-                        pass
-
-        except Exception as e:
-            print(f"⚠️ DEBUG - Erreur mise à jour boutons: {e}")
-
-    def _apply_theme_recursive(self, parent, theme):
-        """✅ Applique le thème récursivement à tous les widgets enfants"""
-        try:
-            for child in parent.winfo_children():
-                # Appliquer le thème au widget enfant
-                if isinstance(child, tk.Frame):
-                    child.configure(bg=theme["frame_bg"])
-                elif isinstance(child, tk.Label):
-                    child.configure(bg=theme["bg"], fg=theme["fg"])
-                
-                # Récursion pour les enfants
-                self._apply_theme_recursive(child, theme)
-                
-        except Exception as e:
-            print(f"⚠️ DEBUG - Erreur récursion thème: {e}")
 
     # =============================================================================
     # MÉTHODES DE GESTION DES MODES D'ENTRÉE
@@ -919,6 +1361,125 @@ class TraducteurRenPyPro:
             
         except Exception as e:
             print(f"⚠️ DEBUG - Erreur config Ctrl+V: {e}")
+
+    def handle_paste(self, event=None):
+        """Colle le contenu du presse-papier"""
+        try:
+            print("📋 DEBUG - handle_paste appelé")
+            
+            # Vérifier qu'on est bien en mode Ctrl+V
+            if hasattr(self, 'input_mode') and self.input_mode != "ctrl_v":
+                messagebox.showinfo(
+                    "📋 Mode incorrect",
+                    f"Mode actuel: Drag & Drop\n\n"
+                    f"Pour utiliser Ctrl+V, basculez en mode Ctrl+V\n"
+                    f"avec le bouton violet."
+                )
+                return "break"
+            
+            # Récupérer le presse-papier
+            try:
+                clipboard_content = self.root.clipboard_get()
+            except tk.TclError:
+                messagebox.showinfo("📋 Presse-papier vide", "Le presse-papier ne contient pas de texte.")
+                return "break"
+            
+            if not clipboard_content or not clipboard_content.strip():
+                messagebox.showinfo("📋 Presse-papier vide", "Le presse-papier ne contient pas de texte.")
+                return "break"
+            
+            # Vérifier conflit avec contenu existant
+            if self.file_content and hasattr(self, 'text_mode') and self.text_mode == "file":
+                result = messagebox.askyesno(
+                    "📋 Remplacer le contenu",
+                    f"Un fichier est déjà chargé.\n\n"
+                    f"Voulez-vous le remplacer par le contenu du presse-papier ?"
+                )
+                if not result:
+                    return "break"
+            
+            # Charger le contenu
+            self.load_from_clipboard(clipboard_content)
+            
+            log_message("INFO", f"Contenu chargé depuis le presse-papier: {len(clipboard_content)} caractères")
+            return "break"
+            
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors du collage", e)
+            messagebox.showerror("❌ Erreur", f"Erreur lors du collage:\n{str(e)}")
+            return "break"
+
+    def load_from_clipboard(self, content):
+        """Charge du contenu depuis le presse-papier"""
+        try:
+            # Convertir en liste de lignes
+            lines = content.splitlines(keepends=True)
+            
+            # Générer un nom unique pour ce contenu
+            self.clipboard_counter = getattr(self, 'clipboard_counter', 0) + 1
+            timestamp = int(time.time())
+            virtual_name = f"clipboard_{self.clipboard_counter}_{timestamp}.rpy"
+            
+            # Charger le contenu dans les variables
+            self.file_content = lines
+            self.original_path = virtual_name
+            self.text_mode = "clipboard"
+            self.source_info = {
+                'type': 'clipboard',
+                'length': len(content),
+                'lines': len(lines),
+                'timestamp': timestamp
+            }
+            
+            # Mettre à jour l'interface
+            self.text_area.configure(state='normal')
+            self.text_area.delete('1.0', tk.END)
+            self.text_area.insert('1.0', content)
+            
+            # Mise à jour des labels
+            self.label_chemin.config(text=f"📋 Contenu du presse-papier ({len(lines)} lignes)")
+            self.label_stats.config(text=f"📊 {len(lines)} lignes chargées depuis le presse-papier")
+            
+            # Message de succès
+            auto_status = "activé" if config_manager.is_auto_open_enabled() else "désactivé"
+            messagebox.showinfo(
+                "📋 Contenu chargé",
+                f"Contenu du presse-papier chargé avec succès !\n\n"
+                f"📝 Lignes: {len(lines)}\n"
+                f"📊 Caractères: {len(content)}\n\n"
+                f"💡 Utilisez maintenant le bouton 'Extraire'\n"
+                f"📂 Auto-Open: {auto_status}"
+            )
+            
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors du chargement depuis le presse-papier", e)
+            messagebox.showerror("❌ Erreur", f"Erreur lors du chargement:\n{str(e)}")
+
+    def is_likely_renpy_content(self, content):
+        """Vérifie si le contenu ressemble à du code Ren'Py"""
+        try:
+            # Patterns typiques Ren'Py
+            renpy_indicators = [
+                'translate ', 'old "', 'new "', 'label ', 'menu:', 'scene ', 'show ', 
+                'hide ', 'with ', 'jump ', 'call ', 'return', '"', '# game/', '# renpy/',
+                'strings:', 'TODO:', 'Translation updated'
+            ]
+            
+            lines = content.split('\n')
+            indicator_count = 0
+            
+            for line in lines[:20]:  # Vérifier les 20 premières lignes
+                line_stripped = line.strip().lower()
+                for indicator in renpy_indicators:
+                    if indicator.lower() in line_stripped:
+                        indicator_count += 1
+                        break
+            
+            # Si au moins 20% des lignes ont des indicateurs Ren'Py
+            return indicator_count >= max(1, len(lines[:20]) * 0.2)
+            
+        except Exception:
+            return True  # En cas d'erreur, accepter le contenu
 
     def update_input_mode_button(self):
         """Met à jour le bouton de mode avec indication de disponibilité"""
@@ -1021,32 +1582,32 @@ class TraducteurRenPyPro:
             log_message("WARNING", f"Erreur configuration Drag & Drop: {e}")
 
     def _update_drag_drop_display(self):
-            """Met à jour l'affichage - VERSION AVEC FALLBACK INTELLIGENT"""
-            try:
-                if not hasattr(self, 'text_area') or not self.text_area:
-                    return
-                
-                if not self.file_content or self.file_content == []:
-                    self.text_mode = "empty"
-                    
-                    try:
-                        self.text_area.configure(state='normal')
-                        self.text_area.delete('1.0', tk.END)
-                        
-                        # Message unifié mode + auto-open + fallback D&D
-                        invitation_text = self._get_unified_invitation_text()
-                        self.text_area.insert('1.0', invitation_text)
-                        
-                    except Exception as e:
-                        print(f"⚠️ DEBUG - Erreur affichage: {e}")
-                else:
-                    try:
-                        self.text_area.configure(state='normal')
-                    except Exception as e:
-                        print(f"⚠️ DEBUG - Erreur activation: {e}")
+        """Met à jour l'affichage - VERSION AVEC FALLBACK INTELLIGENT"""
+        try:
+            if not hasattr(self, 'text_area') or not self.text_area:
+                return
             
-            except Exception as e:
-                print(f"💥 DEBUG - Erreur _update_drag_drop_display: {e}")
+            if not self.file_content or self.file_content == []:
+                self.text_mode = "empty"
+                
+                try:
+                    self.text_area.configure(state='normal')
+                    self.text_area.delete('1.0', tk.END)
+                    
+                    # Message unifié mode + auto-open + fallback D&D
+                    invitation_text = self._get_unified_invitation_text()
+                    self.text_area.insert('1.0', invitation_text)
+                    
+                except Exception as e:
+                    print(f"⚠️ DEBUG - Erreur affichage: {e}")
+            else:
+                try:
+                    self.text_area.configure(state='normal')
+                except Exception as e:
+                    print(f"⚠️ DEBUG - Erreur activation: {e}")
+        
+        except Exception as e:
+            print(f"💥 DEBUG - Erreur _update_drag_drop_display: {e}")
 
     def _get_unified_invitation_text(self):
         """Message d'invitation unifié avec fallback pour Drag & Drop"""
@@ -1080,7 +1641,7 @@ class TraducteurRenPyPro:
                             
                             🔄 Solutions alternatives :
                             • Utilisez les boutons 📂 "Ouvrir Fichier .rpy"
-                            • Basculez en mode Ctrl+V (bouton D&D bleu (ou gris D&D X)
+                            • Basculez en mode Ctrl+V (bouton D&D bleu ou gris D&D ❌)
                             
                             📂 Auto-Open: {auto_status}
 
@@ -1104,610 +1665,6 @@ class TraducteurRenPyPro:
 
             """
 
-    def _make_invitation_readonly(self):
-        """Rend le texte d'invitation en lecture seule tout en gardant Ctrl+V actif"""
-        def block_edit(event):
-            # Bloquer toutes les modifications SAUF Ctrl+V et Ctrl+C
-            if event.keysym in ['v', 'V'] and (event.state & 0x4):  # Ctrl+V
-                return  # Laisser passer
-            if event.keysym in ['c', 'C'] and (event.state & 0x4):  # Ctrl+C
-                return  # Laisser passer
-            if event.keysym in ['a', 'A'] and (event.state & 0x4):  # Ctrl+A
-                return  # Laisser passer
-            
-            # Bloquer toutes les autres modifications
-            return "break"
-        
-        def block_mouse_edit(event):
-            # Bloquer les modifications par souris
-            return "break"
-        
-        # Lier les événements de blocage
-        self.text_area.bind('<KeyPress>', block_edit)
-        self.text_area.bind('<Button-1>', block_mouse_edit)
-        self.text_area.bind('<Button-2>', block_mouse_edit)
-        self.text_area.bind('<Button-3>', block_mouse_edit)
-
-    def _remove_invitation_readonly(self):
-        """Retire la protection lecture seule"""
-        # Délier tous les événements de blocage
-        self.text_area.unbind('<KeyPress>')
-        self.text_area.unbind('<Button-1>')
-        self.text_area.unbind('<Button-2>')
-        self.text_area.unbind('<Button-3>')
-
-    # =============================================================================
-    # MÉTHODES DE GESTION DES FICHIERS
-    # =============================================================================
-
-    def ouvrir_fichier_unique(self):
-        """Ouvre un fichier .rpy unique"""
-        try:
-            filepath = file_manager.open_single_file()
-            if filepath:
-                # Validation avant ouverture
-                validation = validate_before_extraction(filepath)
-                if not validation['is_valid']:
-                    result = messagebox.askyesno(
-                        "⚠️ Fichier suspect",
-                        f"Ce fichier ne semble pas être un fichier Ren'Py valide.\n\n"
-                        f"Confiance: {validation['confidence']}%\n\n"
-                        f"Voulez-vous continuer quand même ?"
-                    )
-                    if not result:
-                        return
-                
-                # Charger le fichier
-                self.charger_fichier(filepath)
-                self.update_window_title()
-                
-        except Exception as e:
-            log_message("ERREUR", "Erreur lors de l'ouverture du fichier unique", e)
-            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le fichier:\n{str(e)}")
-
-    def ouvrir_dossier(self):
-        """Ouvre un dossier contenant des fichiers .rpy"""
-        try:
-            folder_info = file_manager.open_folder()
-            if folder_info:
-                # Charger le premier fichier
-                self.charger_fichier(folder_info['current_file'])
-                self.update_window_title(folder_info['total_files'] - 1)
-                
-        except Exception as e:
-            log_message("ERREUR", "Erreur lors de l'ouverture du dossier", e)
-            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le dossier:\n{str(e)}")
-
-    def ouvrir_dossier_direct(self, folder_path):
-        """Ouvre un dossier directement (pour le drag & drop de dossiers)"""
-        try:
-            print(f"📁 DEBUG - Ouverture dossier direct: '{folder_path}'")
-            
-            # Utiliser le file_manager existant
-            from core.file_manager import file_manager
-            import glob
-            
-            # Chercher les fichiers .rpy dans ce dossier
-            rpy_files = glob.glob(os.path.join(folder_path, "*.rpy"))
-            
-            if not rpy_files:
-                messagebox.showwarning(
-                    "⚠️ Aucun fichier .rpy",
-                    f"Aucun fichier .rpy trouvé dans :\n{os.path.basename(folder_path)}"
-                )
-                return
-            
-            # Nettoyer si nécessaire
-            if self.file_content and self.file_content != []:
-                result = messagebox.askyesno(
-                    "🧹 Nettoyer avant ouverture",
-                    f"Un fichier est déjà chargé.\n\n"
-                    f"Voulez-vous nettoyer avant d'ouvrir le dossier :\n{os.path.basename(folder_path)} ?"
-                )
-                if result:
-                    self.nettoyer_page()
-                else:
-                    return
-            
-            # Configurer le mode dossier
-            file_manager.selected_folder_path = folder_path
-            file_manager.is_folder_mode = True
-            file_manager.opened_files.clear()
-            
-            # Charger le premier fichier
-            first_file = rpy_files[0]
-            file_manager.opened_files.add(first_file)
-            
-            # Charger dans l'interface
-            self.charger_fichier(first_file)
-            
-            log_message("INFO", f"Mode dossier activé par Drag & Drop: {len(rpy_files)} fichiers dans {anonymize_path(folder_path)}")
-            
-            # Feedback utilisateur
-            if hasattr(self, 'label_stats') and self.label_stats:
-                self.label_stats.config(text=f"📁 Mode dossier: {len(rpy_files)} fichiers trouvés")
-            
-            messagebox.showinfo(
-                "📁 Dossier ouvert",
-                f"Mode dossier activé :\n\n"
-                f"📁 Dossier: {os.path.basename(folder_path)}\n"
-                f"📄 Fichiers .rpy: {len(rpy_files)}\n"
-                f"🎯 Premier fichier: {os.path.basename(first_file)}"
-            )
-            
-            print(f"🎉 DEBUG - Mode dossier activé avec succès!")
-            
-        except Exception as e:
-            print(f"💥 DEBUG - Erreur ouverture dossier direct: {str(e)}")
-            log_message("ERREUR", f"Erreur ouverture dossier par Drag & Drop: {folder_path}", e)
-            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le dossier:\n{str(e)}")
-
-    def charger_fichier(self, filepath):
-        """Charge un fichier dans l'interface - VERSION ÉTENDUE"""
-        try:
-            self.file_content = file_manager.load_file_content(filepath)
-            self.original_path = filepath
-            
-            # Définir le mode
-            self.text_mode = "file"
-            self.source_info = {
-                'type': 'file',
-                'path': filepath,
-                'lines': len(self.file_content),
-                'size': os.path.getsize(filepath) if os.path.exists(filepath) else 0
-            }
-            
-            self.label_chemin.config(text=f"📄 {filepath}")
-            
-            # Réactiver l'édition et charger le contenu
-            self.text_area.configure(state='normal')
-            self.text_area.delete('1.0', tk.END)
-            self.text_area.insert(tk.END, ''.join(self.file_content))
-            
-            line_count = len(self.file_content)
-            self.label_stats.config(text=f"📊 {line_count} lignes chargées")
-            
-            # Mettre à jour l'affichage
-            self._update_drag_drop_display()
-            
-            log_message("INFO", f"Fichier chargé: {line_count} lignes")
-            
-        except Exception as e:
-            log_message("ERREUR", f"Impossible de charger le fichier {filepath}", e)
-            messagebox.showerror("❌ Erreur", f"Impossible de charger le fichier:\n{str(e)}")
-
-    def _handle_dropped_file(self, filepath):
-        """Gère un fichier déposé par Drag & Drop - VERSION SIMPLIFIÉE"""
-        try:
-            print(f"📁 DEBUG - Traitement fichier: '{filepath}'")
-            
-            # Vérifier qu'on est bien en mode Drag & Drop
-            if hasattr(self, 'input_mode') and self.input_mode != "drag_drop":
-                messagebox.showinfo(
-                    "🎯 Mode incorrect",
-                    f"Mode actuel: Ctrl+V\n\n"
-                    f"Pour utiliser le Drag & Drop, basculez en mode D&D\n"
-                    f"avec le bouton bleu."
-                )
-                return
-            
-            # Vérifications basiques
-            if not os.path.exists(filepath):
-                messagebox.showerror("❌ Fichier introuvable", f"Le fichier n'existe pas:\n{filepath}")
-                return
-            
-            if not filepath.lower().endswith('.rpy'):
-                messagebox.showerror("❌ Fichier non supporté", f"Seuls les fichiers .rpy sont acceptés.\n\nFichier: {os.path.basename(filepath)}")
-                return
-            
-            # Vérifier si du contenu est déjà chargé
-            if self.file_content and self.file_content != []:
-                result = messagebox.askyesno(
-                    "🧹 Remplacer le contenu",
-                    f"Du contenu est déjà chargé.\n\n"
-                    f"Voulez-vous le remplacer par ce fichier :\n{os.path.basename(filepath)} ?"
-                )
-                if result:
-                    self.nettoyer_page()
-                else:
-                    return
-            
-            # Charger le fichier
-            self.charger_fichier(filepath)
-            
-            messagebox.showinfo(
-                "🎉 Fichier chargé",
-                f"Fichier chargé avec succès par Drag & Drop !\n\n"
-                f"📄 {os.path.basename(filepath)}\n"
-                f"📊 {len(self.file_content)} lignes"
-            )
-            
-            log_message("INFO", f"Fichier chargé par Drag & Drop: {anonymize_path(filepath)}")
-            
-        except Exception as e:
-            print(f"💥 DEBUG - Erreur _handle_dropped_file: {str(e)}")
-            log_message("ERREUR", f"Erreur traitement fichier D&D: {filepath}", e)
-            messagebox.showerror("❌ Erreur", f"Erreur lors du chargement:\n{str(e)}")
-
-    def _clean_file_path(self, file_path):
-        """Nettoie un chemin de fichier en préservant les caractères légitimes"""
-        try:
-            path = str(file_path).strip()
-            
-            # Supprimer SEULEMENT les préfixes URI
-            if path.startswith('file:///'):
-                path = path[8:]
-            elif path.startswith('file://'):
-                path = path[7:]
-            
-            # Supprimer SEULEMENT les caractères vraiment problématiques
-            # GARDER: _ - ( ) [ ] qui sont légitimes dans les noms de fichiers
-            chars_to_remove = ['"', "'", '{', '}', '\r', '\n', '\t']
-            for char in chars_to_remove:
-                path = path.replace(char, '')
-            
-            # Normaliser le chemin (convertit / en \ sur Windows)
-            path = os.path.normpath(path)
-            
-            print(f"🧹 DEBUG - Nettoyage final: '{file_path}' → '{path}'")
-            return path
-            
-        except Exception as e:
-            print(f"💥 DEBUG - Erreur nettoyage: {e}")
-            return str(file_path)
-
-    def _advanced_path_clean(self, raw_path):
-        """Nettoyage avancé spécialement pour les chemins Windows complexes"""
-        try:
-            path = str(raw_path).strip()
-            
-            # Supprimer les préfixes URI
-            prefixes = ['file:///', 'file://', 'file:']
-            for prefix in prefixes:
-                if path.startswith(prefix):
-                    path = path[len(prefix):]
-                    break
-            
-            # Décoder les URL encoding si présent (%20 = espace, etc.)
-            import urllib.parse
-            try:
-                path = urllib.parse.unquote(path)
-            except:
-                pass
-            
-            # Supprimer seulement les caractères vraiment problématiques
-            chars_to_remove = ['"', "'", '{', '}', '\r', '\n', '\t']
-            for char in chars_to_remove:
-                path = path.replace(char, '')
-            
-            # Normaliser les séparateurs
-            path = path.replace('/', '\\')  # Windows utilise \
-            path = os.path.normpath(path)
-            
-            print(f"🧹 DEBUG - Nettoyage avancé: '{raw_path}' → '{path}'")
-            return path
-            
-        except Exception as e:
-            print(f"💥 DEBUG - Erreur nettoyage avancé: {e}")
-            return str(raw_path)
-
-    def _is_valid_drag_file(self, event):
-        """Vérifie si le fichier draggé est un .rpy valide"""
-        try:
-            files = self.root.tk.splitlist(event.data)
-            if files:
-                file_path = files[0].strip('{}').strip('"').strip("'")
-                return file_path.lower().endswith('.rpy') and os.path.exists(file_path)
-        except:
-            pass
-        return False
-
-    def _on_text_click(self, event):
-        """Gère les clics sur la zone de texte (si vide, propose d'ouvrir un fichier)"""
-        # Si aucun fichier n'est chargé, proposer d'en ouvrir un
-        if not self.file_content or self.file_content == []:
-            # Mais seulement si le clic est dans la zone centrale
-            try:
-                # Vérifier que la zone de texte est vide (contient juste le message d'invitation)
-                content = self.text_area.get('1.0', tk.END).strip()
-                if "Glissez un fichier .rpy ici" in content or "Cliquez ici" in content or not content:
-                    result = messagebox.askyesno(
-                        "📂 Ouvrir un fichier",
-                        "Aucun fichier n'est chargé.\n\n"
-                        "Voulez-vous ouvrir un fichier .rpy ?\n\n"
-                        "💡 Astuce: Vous pouvez aussi utiliser Ctrl+O"
-                    )
-                    if result:
-                        self.ouvrir_fichier_unique()
-            except:
-                pass  # Si erreur, ne rien faire
-
-    # =============================================================================
-    # MÉTHODES DE GESTION DU PRESSE-PAPIER 
-    # =============================================================================
-
-    def handle_paste(self, event=None):
-        """Colle le contenu du presse-papier - VERSION MODE SWITCHER"""
-        try:
-            print("📋 DEBUG - handle_paste appelé")
-            
-            # Vérifier qu'on est bien en mode Ctrl+V
-            if hasattr(self, 'input_mode') and self.input_mode != "ctrl_v":
-                messagebox.showinfo(
-                    "📋 Mode incorrect",
-                    f"Mode actuel: Drag & Drop\n\n"
-                    f"Pour utiliser Ctrl+V, basculez en mode Ctrl+V\n"
-                    f"avec le bouton violet."
-                )
-                return "break"
-            
-            # Vérification de l'état actuel
-            try:
-                current_content = self.text_area.get('1.0', tk.END)
-            except Exception as e:
-                print(f"⚠️ DEBUG - Erreur lecture contenu: {e}")
-                return "break"
-            
-            # Détection mode invitation
-            is_invitation = ("MODE CTRL+V" in current_content or 
-                            "Utilisez Ctrl+V" in current_content or
-                            "Glissez un fichier" in current_content)
-            
-            if is_invitation:
-                print("📋 DEBUG - Mode invitation détecté")
-            
-            # Récupérer le presse-papier
-            try:
-                clipboard_content = self.root.clipboard_get()
-            except tk.TclError:
-                print("⚠️ DEBUG - Presse-papier vide")
-                messagebox.showinfo("📋 Presse-papier vide", "Le presse-papier ne contient pas de texte.")
-                return "break"
-            except Exception as e:
-                print(f"⚠️ DEBUG - Erreur accès presse-papier: {e}")
-                return "break"
-            
-            if not clipboard_content or not clipboard_content.strip():
-                messagebox.showinfo("📋 Presse-papier vide", "Le presse-papier ne contient pas de texte.")
-                return "break"
-            
-            print(f"📋 DEBUG - Contenu presse-papier: {len(clipboard_content)} caractères")
-            
-            # Vérifier conflit avec contenu existant
-            if self.file_content and hasattr(self, 'text_mode') and self.text_mode == "file":
-                result = messagebox.askyesno(
-                    "📋 Remplacer le contenu",
-                    f"Un fichier est déjà chargé.\n\n"
-                    f"Voulez-vous le remplacer par le contenu du presse-papier ?"
-                )
-                if not result:
-                    return "break"
-            
-            # Charger le contenu
-            print("📋 DEBUG - Appel load_from_clipboard")
-            self.load_from_clipboard(clipboard_content)
-            
-            log_message("INFO", f"Contenu chargé depuis le presse-papier: {len(clipboard_content)} caractères")
-            return "break"
-            
-        except Exception as e:
-            print(f"💥 DEBUG - Erreur critique handle_paste: {e}")
-            log_message("ERREUR", "Erreur lors du collage", e)
-            messagebox.showerror("❌ Erreur", f"Erreur lors du collage:\n{str(e)}")
-            return "break"
-
-    def load_from_clipboard(self, content):
-        """Charge du contenu depuis le presse-papier - VERSION COMPLÈTE"""
-        try:
-            print("📋 DEBUG - load_from_clipboard début")
-            
-            # Validation basique du contenu Ren'Py
-            if not self.is_likely_renpy_content(content):
-                result = messagebox.askyesno(
-                    "❓ Contenu suspect",
-                    "Le contenu ne semble pas être du code Ren'Py valide.\n\n"
-                    "Voulez-vous continuer quand même ?"
-                )
-                if not result:
-                    return
-            
-            # Convertir en liste de lignes
-            lines = content.splitlines(keepends=True)
-            
-            # Générer un nom unique pour ce contenu
-            self.clipboard_counter = getattr(self, 'clipboard_counter', 0) + 1
-            timestamp = int(time.time())
-            virtual_name = f"clipboard_{self.clipboard_counter}_{timestamp}.rpy"
-            
-            # Charger le contenu dans les variables
-            self.file_content = lines
-            self.original_path = virtual_name
-            self.text_mode = "clipboard"
-            self.source_info = {
-                'type': 'clipboard',
-                'length': len(content),
-                'lines': len(lines),
-                'timestamp': timestamp
-            }
-            
-            print(f"📋 DEBUG - Variables mises à jour: {len(lines)} lignes")
-            
-            # Mettre à jour l'interface
-            try:
-                self.text_area.configure(state='normal')
-                self.text_area.delete('1.0', tk.END)
-                self.text_area.insert('1.0', content)
-                print("✅ DEBUG - Contenu inséré dans text_area")
-            except Exception as e:
-                print(f"⚠️ DEBUG - Erreur mise à jour text_area: {e}")
-            
-            # Mise à jour des labels
-            try:
-                self.label_chemin.config(text=f"📋 Contenu du presse-papier ({len(lines)} lignes)")
-                self.label_stats.config(text=f"📊 {len(lines)} lignes chargées depuis le presse-papier")
-            except Exception as e:
-                print(f"⚠️ DEBUG - Erreur mise à jour labels: {e}")
-            
-            # Message de succès avec info Auto-Open
-            auto_status = "activé" if config_manager.is_auto_open_enabled() else "désactivé"
-            messagebox.showinfo(
-                "📋 Contenu chargé",
-                f"Contenu du presse-papier chargé avec succès !\n\n"
-                f"📝 Lignes: {len(lines)}\n"
-                f"📊 Caractères: {len(content)}\n\n"
-                f"💡 Utilisez maintenant le bouton 'Extraire'\n"
-                f"📂 Auto-Open: {auto_status}"
-            )
-            
-            print("✅ DEBUG - load_from_clipboard terminé avec succès")
-            
-        except Exception as e:
-            print(f"💥 DEBUG - Erreur critique load_from_clipboard: {e}")
-            log_message("ERREUR", "Erreur lors du chargement depuis le presse-papier", e)
-            messagebox.showerror("❌ Erreur", f"Erreur lors du chargement:\n{str(e)}")
-
-    def handle_copy_result(self, event=None):
-        """Copie le contenu de la zone de texte vers le presse-papier"""
-        try:
-            content = self.text_area.get('1.0', tk.END)
-            
-            # Enlever le caractère de fin ajouté par Tkinter
-            if content.endswith('\n'):
-                content = content[:-1]
-            
-            if not content.strip():
-                messagebox.showinfo("📋 Rien à copier", "La zone de texte est vide.")
-                return
-            
-            # Copier vers le presse-papier
-            self.root.clipboard_clear()
-            self.root.clipboard_append(content)
-            
-            # Feedback utilisateur
-            line_count = len(content.split('\n'))
-            messagebox.showinfo(
-                "📋 Copié !",
-                f"Contenu copié dans le presse-papier !\n\n"
-                f"📝 Lignes: {line_count}\n"
-                f"📊 Caractères: {len(content)}"
-            )
-            
-            log_message("INFO", f"Contenu copié vers le presse-papier: {len(content)} caractères")
-            
-        except Exception as e:
-            log_message("ERREUR", "Erreur lors de la copie", e)
-            messagebox.showerror("❌ Erreur", f"Erreur lors de la copie:\n{str(e)}")
-
-    def is_likely_renpy_content(self, content):
-        """Vérifie si le contenu ressemble à du code Ren'Py"""
-        try:
-            # Patterns typiques Ren'Py
-            renpy_indicators = [
-                'translate ', 'old "', 'new "', 'label ', 'menu:', 'scene ', 'show ', 
-                'hide ', 'with ', 'jump ', 'call ', 'return', '"', '# game/', '# renpy/',
-                'strings:', 'TODO:', 'Translation updated'
-            ]
-            
-            lines = content.split('\n')
-            indicator_count = 0
-            
-            for line in lines[:20]:  # Vérifier les 20 premières lignes
-                line_stripped = line.strip().lower()
-                for indicator in renpy_indicators:
-                    if indicator.lower() in line_stripped:
-                        indicator_count += 1
-                        break
-            
-            # Si au moins 20% des lignes ont des indicateurs Ren'Py
-            return indicator_count >= max(1, len(lines[:20]) * 0.2)
-            
-        except Exception:
-            return True  # En cas d'erreur, accepter le contenu
-
-    # =============================================================================
-    # MÉTHODES D'EXTRACTION ET RECONSTRUCTION
-    # =============================================================================
-
-    def extraire_textes(self):
-        """Extrait les textes - VERSION UNIFIÉE avec Auto-Open intelligent"""
-        if not self.file_content:
-            mode_info = "D&D" if self.input_mode == "drag_drop" else "Ctrl+V"
-            messagebox.showwarning("⚠️ Erreur", 
-                f"Chargez d'abord un fichier .rpy ou collez du contenu.\n"
-                f"Mode actuel: {mode_info}")
-            return
-        
-        try:
-            self.label_stats.config(text="⚙️ Extraction en cours...")
-            self.root.update()
-            
-            # Sauvegarde de sécurité
-            if self.original_path:
-                backup_result = create_safety_backup(self.original_path)
-                if not backup_result['success']:
-                    log_message("WARNING", f"Sauvegarde échouée: {backup_result['error']}")
-            
-            # Extraction
-            from core.extraction import TextExtractor
-            extractor = TextExtractor()
-            extractor.load_file_content(self.file_content, self.original_path)
-            self.extraction_results = extractor.extract_texts()
-            self.last_extraction_time = extractor.extraction_time
-            self.last_extractor = extractor
-            
-            # Compteurs
-            self.extraction_results['extracted_count'] = extractor.extracted_count
-            self.extraction_results['asterix_count'] = extractor.asterix_count
-            self.extraction_results['empty_count'] = extractor.empty_count
-            
-            # LOGIQUE AUTO-OPEN INTELLIGENTE
-            files_to_open = [f for f in [
-                self.extraction_results.get('main_file'),
-                self.extraction_results.get('asterix_file'), 
-                self.extraction_results.get('empty_file')
-            ] if f]
-            
-            auto_open_enabled = config_manager.is_auto_open_enabled()
-            
-            if auto_open_enabled and files_to_open:
-                FileOpener.open_files(files_to_open, True)
-                open_info = f"\n📂 {len(files_to_open)} fichier(s) ouvert(s) automatiquement"
-            elif not auto_open_enabled and files_to_open:
-                result = messagebox.askyesno("📂 Ouvrir les fichiers ?",
-                    f"Extraction terminée !\n\n📝 {extractor.extracted_count} textes extraits\n\n"
-                    f"Auto-Open désactivé. Ouvrir les {len(files_to_open)} fichier(s) ?")
-                
-                if result:
-                    FileOpener.open_files(files_to_open, True)
-                    open_info = f"\n📂 {len(files_to_open)} fichier(s) ouvert(s) sur demande"
-                else:
-                    open_info = f"\n💡 {len(files_to_open)} fichier(s) créé(s) (non ouverts)"
-            else:
-                open_info = ""
-            
-            # Message de succès unifié
-            message = f"✅ Extraction terminée en {self.last_extraction_time:.2f}s !"
-            message += f"\n\n📝 {extractor.extracted_count} textes extraits"
-            
-            if extractor.asterix_count > 0:
-                message += f"\n⭐ {extractor.asterix_count} expressions entre astérisques"
-            if extractor.empty_count > 0:
-                message += f"\n🔳 {extractor.empty_count} textes vides/espaces"
-            
-            message += open_info
-            
-            # Info sur le mode source
-            if hasattr(self, 'text_mode') and self.text_mode == "clipboard":
-                message += f"\n\n📋 Source: Contenu du presse-papier"
-            
-            self.label_stats.config(text=f"📊 {extractor.extracted_count} textes extraits | ⏱️ {self.last_extraction_time:.2f}s")
-            messagebox.showinfo("🎉 Extraction terminée", message)
-            
-        except Exception as e:
-            log_message("ERREUR", "Erreur extraction", e)
-            messagebox.showerror("❌ Erreur", f"Erreur pendant l'extraction:\n{str(e)}")
-            self.label_stats.config(text="❌ Erreur lors de l'extraction")
-
     def reconstruire_fichier(self):
         """Reconstruit avec validation corrigée pour nouvelle structure"""
         if not self.file_content or not self.original_path:
@@ -1716,6 +1673,7 @@ class TraducteurRenPyPro:
         
         try:
             # Vérifier que les fichiers d'extraction existent
+            from core.extraction_enhanced import get_file_base_name
             file_base = get_file_base_name(self.original_path)
             
             if not self.extraction_results:
@@ -1729,7 +1687,6 @@ class TraducteurRenPyPro:
                 empty_count = self.extraction_results.get('empty_count', 0)
                 
                 # Construire les chemins avec la nouvelle structure
-                from utils.logging import extract_game_name
                 from utils.constants import FOLDERS
                 
                 game_name = extract_game_name(self.original_path)
@@ -1768,7 +1725,6 @@ class TraducteurRenPyPro:
             # Mode fichier classique : demander le choix
             if hasattr(self, 'text_mode') and self.text_mode == "file":
                 if not self._save_mode:
-                    from ui.interface import SaveModeDialog
                     save_dialog = SaveModeDialog(self.root)
                     self._save_mode = save_dialog.show()
                     
@@ -1782,8 +1738,6 @@ class TraducteurRenPyPro:
                 print("📋 DEBUG - Mode presse-papier: forcer nouveau fichier")
             
             # ✅ CORRECTION : Reconstruction avec nouvelle structure
-            from core.reconstruction import FileReconstructor
-            
             self.label_stats.config(text="🔧 Reconstruction en cours...")
             self.root.update()
             
@@ -1796,7 +1750,6 @@ class TraducteurRenPyPro:
             if result:
                 # Contrôle de cohérence si validation activée
                 if config_manager.is_validation_enabled():
-                    from core.coherence_checker import check_file_coherence
                     coherence_result = check_file_coherence(result['save_path'])
                     
                     if coherence_result['issues_found'] > 0:
@@ -1812,7 +1765,6 @@ class TraducteurRenPyPro:
                         if response is True:  # Oui - Ouvrir le fichier
                             try:
                                 if coherence_result.get('warning_file'):
-                                    from core.file_manager import FileOpener
                                     FileOpener.open_files([coherence_result['warning_file']], True)
                             except Exception as e:
                                 log_message("WARNING", f"Impossible d'ouvrir le fichier d'avertissement", e)
@@ -1845,7 +1797,6 @@ class TraducteurRenPyPro:
                 
                 # Ouvrir le fichier reconstruit si demandé
                 try:
-                    from core.file_manager import FileOpener
                     FileOpener.open_files([result['save_path']], config_manager.is_auto_open_enabled())
                 except:
                     pass
@@ -1926,7 +1877,7 @@ class TraducteurRenPyPro:
         option1_frame.pack(fill='x', pady=10)
         
         btn_overwrite = tk.Button(option1_frame, text="🔄 Écraser le fichier original",
-                 font=('Segoe UI Emoji', 11, 'bold'), bg=theme["warning"], fg='#000000',
+                 font=('Segoe UI Emoji', 11, 'bold'), bg=theme.get("warning", "#ffc107"), fg='#000000',
                  bd=0, pady=15, command=lambda: choisir_mode('overwrite'))
         btn_overwrite.pack(fill='x', padx=10, pady=10)
         
@@ -1949,7 +1900,7 @@ class TraducteurRenPyPro:
         
         # Bouton annuler
         btn_cancel = tk.Button(dialog, text="❌ Annuler", font=('Segoe UI Emoji', 10),
-                 bg=theme["danger"], fg='#000000', bd=0, pady=8,
+                 bg=theme.get("danger", "#dc3545"), fg='#000000', bd=0, pady=8,
                  command=dialog.destroy)
         btn_cancel.pack(pady=10)
         
@@ -1979,6 +1930,121 @@ class TraducteurRenPyPro:
             else:
                 self.nettoyer_page()
 
+    def ouvrir_fichier_unique(self):
+        """Ouvre un fichier .rpy unique"""
+        try:
+            filepath = file_manager.open_single_file()
+            if filepath:
+                # Validation avant ouverture
+                validation = validate_before_extraction(filepath)
+                if not validation['is_valid']:
+                    result = messagebox.askyesno(
+                        "⚠️ Fichier suspect",
+                        f"Ce fichier ne semble pas être un fichier Ren'Py valide.\n\n"
+                        f"Confiance: {validation['confidence']}%\n\n"
+                        f"Voulez-vous continuer quand même ?"
+                    )
+                    if not result:
+                        return
+                
+                # Charger le fichier
+                self.charger_fichier(filepath)
+                self.update_window_title()
+                
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors de l'ouverture du fichier unique", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le fichier:\n{str(e)}")
+
+    def ouvrir_dossier(self):
+        """Ouvre un dossier contenant des fichiers .rpy"""
+        try:
+            folder_info = file_manager.open_folder()
+            if folder_info:
+                # Charger le premier fichier
+                self.charger_fichier(folder_info['current_file'])
+                self.update_window_title(folder_info['total_files'] - 1)
+                
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors de l'ouverture du dossier", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le dossier:\n{str(e)}")
+
+    def charger_fichier(self, filepath):
+        """Charge un fichier dans l'interface"""
+        try:
+            self.file_content = file_manager.load_file_content(filepath)
+            self.original_path = filepath
+            
+            # Définir le mode
+            self.text_mode = "file"
+            self.source_info = {
+                'type': 'file',
+                'path': filepath,
+                'lines': len(self.file_content),
+                'size': os.path.getsize(filepath) if os.path.exists(filepath) else 0
+            }
+            
+            self.label_chemin.config(text=f"📄 {filepath}")
+            
+            # Réactiver l'édition et charger le contenu
+            self.text_area.configure(state='normal')
+            self.text_area.delete('1.0', tk.END)
+            self.text_area.insert(tk.END, ''.join(self.file_content))
+            
+            line_count = len(self.file_content)
+            self.label_stats.config(text=f"📊 {line_count} lignes chargées")
+            
+            # Mettre à jour l'affichage
+            self._update_drag_drop_display()
+            
+            log_message("INFO", f"Fichier chargé: {line_count} lignes")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Impossible de charger le fichier {filepath}", e)
+            messagebox.showerror("❌ Erreur", f"Impossible de charger le fichier:\n{str(e)}")
+
+    def _handle_dropped_file(self, filepath):
+        """Gère un fichier déposé par Drag & Drop"""
+        try:
+            print(f"📁 DEBUG - Traitement fichier: '{filepath}'")
+            
+            # Vérifications basiques
+            if not os.path.exists(filepath):
+                messagebox.showerror("❌ Fichier introuvable", f"Le fichier n'existe pas:\n{filepath}")
+                return
+            
+            if not filepath.lower().endswith('.rpy'):
+                messagebox.showerror("❌ Fichier non supporté", f"Seuls les fichiers .rpy sont acceptés.\n\nFichier: {os.path.basename(filepath)}")
+                return
+            
+            # Vérifier si du contenu est déjà chargé
+            if self.file_content and self.file_content != []:
+                result = messagebox.askyesno(
+                    "🧹 Remplacer le contenu",
+                    f"Du contenu est déjà chargé.\n\n"
+                    f"Voulez-vous le remplacer par ce fichier :\n{os.path.basename(filepath)} ?"
+                )
+                if result:
+                    self.nettoyer_page()
+                else:
+                    return
+            
+            # Charger le fichier
+            self.charger_fichier(filepath)
+            
+            messagebox.showinfo(
+                "🎉 Fichier chargé",
+                f"Fichier chargé avec succès par Drag & Drop !\n\n"
+                f"📄 {os.path.basename(filepath)}\n"
+                f"📊 {len(self.file_content)} lignes"
+            )
+            
+            log_message("INFO", f"Fichier chargé par Drag & Drop: {anonymize_path(filepath)}")
+            
+        except Exception as e:
+            print(f"💥 DEBUG - Erreur _handle_dropped_file: {str(e)}")
+            log_message("ERREUR", f"Erreur traitement fichier D&D: {filepath}", e)
+            messagebox.showerror("❌ Erreur", f"Erreur lors du chargement:\n{str(e)}")
+
     # =============================================================================
     # MÉTHODES UTILITAIRES
     # =============================================================================
@@ -1991,11 +2057,32 @@ class TraducteurRenPyPro:
             log_message("ERREUR", "Erreur lors de l'ouverture du gestionnaire de sauvegardes", e)
             messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le gestionnaire de sauvegardes:\n{str(e)}")
 
-    def afficher_tutoriel(self):
-        """Affiche le tutoriel complet"""
+    def afficher_menu_aide(self):
+        """Affiche le menu d'aide contextuel"""
         try:
+            from ui.tutorial import show_help_menu
+            show_help_menu()
+            log_message("INFO", "Menu d'aide contextuel ouvert")
+        except Exception as e:
+            log_message("ERREUR", "Erreur menu d'aide", e)
+            self.afficher_tutoriel()
+
+    def afficher_nouveautes(self):
+        """Affiche les nouveautés de la version"""
+        try:
+            from ui.tutorial import show_whats_new
+            show_whats_new()
+            log_message("INFO", "Nouveautés v2.3.0 affichées")
+        except Exception as e:
+            log_message("ERREUR", "Erreur affichage nouveautés", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'afficher les nouveautés:\n{str(e)}")
+
+    def afficher_tutoriel(self):
+        """Affiche le tutoriel complet (méthode de compatibilité)"""
+        try:
+            from ui.tutorial import show_tutorial
             show_tutorial()
-            log_message("INFO", "Tutoriel affiché sur demande de l'utilisateur")
+            log_message("INFO", "Tutoriel complet affiché (accès direct)")
         except Exception as e:
             log_message("ERREUR", "Erreur affichage tutoriel", e)
             messagebox.showerror("❌ Erreur", f"Impossible d'afficher le tutoriel:\n{str(e)}")
@@ -2076,7 +2163,6 @@ class TraducteurRenPyPro:
                 return
             
             # Extraire le nom du jeu
-            from utils.logging import extract_game_name
             game_name = extract_game_name(self.original_path)
             
             # ✅ CORRECTION : Construire le chemin complet
@@ -2120,7 +2206,6 @@ class TraducteurRenPyPro:
     def ouvrir_avertissements(self):
         """CORRIGÉ : Ouvre le dossier avertissements avec structure organisée"""
         from utils.constants import FOLDERS
-        from utils.logging import extract_game_name
         import glob
         
         try:
@@ -2157,26 +2242,8 @@ class TraducteurRenPyPro:
                     self._open_folder(warnings_folder)
                 return
             
-            # S'il y a un seul fichier, le proposer directement
-            if len(warning_files) == 1:
-                file_name = os.path.basename(warning_files[0])
-                result = messagebox.askyesnocancel(
-                    "📄 Fichier d'avertissement trouvé",
-                    f"Un fichier d'avertissement trouvé :\n{file_name}\n\n"
-                    f"• Oui = Ouvrir ce fichier\n"
-                    f"• Non = Ouvrir le dossier\n"
-                    f"• Annuler = Fermer"
-                )
-                
-                if result is True:  # Ouvrir le fichier
-                    from core.file_manager import FileOpener
-                    FileOpener.open_files([warning_files[0]], True)
-                elif result is False:  # Ouvrir le dossier
-                    self._open_folder(warnings_folder)
-            
-            # S'il y a plusieurs fichiers, afficher la liste
-            else:
-                self._show_warning_files_list(warning_files, warnings_folder)
+            # Ouvrir le dossier
+            self._open_folder(warnings_folder)
                 
         except Exception as e:
             log_message("ERREUR", f"Erreur ouverture dossier avertissements", e)
@@ -2239,8 +2306,8 @@ class TraducteurRenPyPro:
                 font=('Segoe UI Emoji', 10),
                 bg=theme["entry_bg"],
                 fg=theme["entry_fg"],
-                selectbackground=theme["select_bg"],
-                selectforeground=theme["select_fg"]
+                selectbackground=theme.get("select_bg", "#007acc"),
+                selectforeground=theme.get("select_fg", "#ffffff")
             )
             
             scrollbar_list = tk.Scrollbar(listbox_frame, orient="vertical", command=listbox.yview)
@@ -2280,7 +2347,7 @@ class TraducteurRenPyPro:
                 text="📄 Ouvrir le fichier sélectionné",
                 font=('Segoe UI Emoji', 10),
                 bg=theme["accent"],
-                fg=theme["button_fg"],
+                fg="#000000",
                 command=open_selected
             )
             btn_open_file.pack(side='left')
@@ -2289,8 +2356,6 @@ class TraducteurRenPyPro:
                 button_frame,
                 text="📁 Ouvrir le dossier",
                 font=('Segoe UI Emoji', 10),
-                bg=theme["warning"],
-                fg='#000000',
                 command=open_folder
             )
             btn_open_folder.pack(side='left', padx=(10, 0))
@@ -2299,8 +2364,8 @@ class TraducteurRenPyPro:
                 button_frame,
                 text="❌ Fermer",
                 font=('Segoe UI Emoji', 10),
-                bg=theme["danger"],
-                fg=theme["button_fg"],
+                bg=theme.get("danger", "#dc3545"),
+                fg="#000000",
                 command=list_window.destroy
             )
             btn_close.pack(side='right')
@@ -2312,112 +2377,111 @@ class TraducteurRenPyPro:
             log_message("ERREUR", f"Erreur affichage liste avertissements", e)
 
     def _show_coherence_issues(self, issues):
-            """Affiche les problèmes de cohérence dans une fenêtre non-bloquante"""
-            try:
-                # Créer une fenêtre pour afficher les problèmes
-                issues_window = tk.Toplevel(self.root)
-                issues_window.title("⚠️ Problèmes de cohérence détectés")
-                issues_window.geometry("900x700")
-                # NE PAS utiliser transient ou grab_set pour éviter le blocage
+        """Affiche les problèmes de cohérence dans une fenêtre non-bloquante"""
+        try:
+            # Créer une fenêtre pour afficher les problèmes
+            issues_window = tk.Toplevel(self.root)
+            issues_window.title("⚠️ Problèmes de cohérence détectés")
+            issues_window.geometry("900x700")
+            
+            # Centrer la fenêtre
+            issues_window.update_idletasks()
+            x = (issues_window.winfo_screenwidth() // 2) - (issues_window.winfo_width() // 2)
+            y = (issues_window.winfo_screenheight() // 2) - (issues_window.winfo_height() // 2)
+            issues_window.geometry(f"+{x}+{y}")
+            
+            # Appliquer le thème
+            theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
+            issues_window.configure(bg=theme["bg"])
+            
+            # En-tête
+            header_frame = tk.Frame(issues_window, bg=theme["bg"])
+            header_frame.pack(fill='x', padx=10, pady=10)
+            
+            title_label = tk.Label(
+                header_frame,
+                text="⚠️ Problèmes de cohérence détectés",
+                font=('Segoe UI Emoji', 16, 'bold'),
+                bg=theme["bg"],
+                fg=theme.get("danger", "#dc3545")
+            )
+            title_label.pack()
+            
+            count_label = tk.Label(
+                header_frame,
+                text=f"{len(issues)} problème(s) trouvé(s) dans la traduction",
+                font=('Segoe UI Emoji', 12),
+                bg=theme["bg"],
+                fg=theme["fg"]
+            )
+            count_label.pack(pady=(5, 0))
+            
+            # Zone de texte avec scrollbar
+            text_frame = tk.Frame(issues_window, bg=theme["bg"])
+            text_frame.pack(fill='both', expand=True, padx=10, pady=5)
+            
+            text_area = ScrolledText(
+                text_frame,
+                font=('Courier New', 10),
+                wrap=tk.WORD,
+                bg=theme["entry_bg"],
+                fg=theme["entry_fg"],
+                selectbackground=theme.get("select_bg", "#007acc"),
+                selectforeground=theme.get("select_fg", "#ffffff")
+            )
+            text_area.pack(fill='both', expand=True)
+            
+            # Formater et insérer les problèmes
+            content = ""
+            issues_by_type = {}
+            for issue in issues:
+                issue_type = issue['type']
+                if issue_type not in issues_by_type:
+                    issues_by_type[issue_type] = []
+                issues_by_type[issue_type].append(issue)
+            
+            for issue_type, type_issues in issues_by_type.items():
+                content += f"🔸 {self._get_issue_type_name(issue_type)}\n"
+                content += "-" * 50 + "\n"
                 
-                # Centrer la fenêtre
-                issues_window.update_idletasks()
-                x = (issues_window.winfo_screenwidth() // 2) - (issues_window.winfo_width() // 2)
-                y = (issues_window.winfo_screenheight() // 2) - (issues_window.winfo_height() // 2)
-                issues_window.geometry(f"+{x}+{y}")
-                
-                # Appliquer le thème
-                theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
-                issues_window.configure(bg=theme["bg"])
-                
-                # En-tête
-                header_frame = tk.Frame(issues_window, bg=theme["bg"])
-                header_frame.pack(fill='x', padx=10, pady=10)
-                
-                title_label = tk.Label(
-                    header_frame,
-                    text="⚠️ Problèmes de cohérence détectés",
-                    font=('Segoe UI Emoji', 16, 'bold'),
-                    bg=theme["bg"],
-                    fg=theme["danger"]
-                )
-                title_label.pack()
-                
-                count_label = tk.Label(
-                    header_frame,
-                    text=f"{len(issues)} problème(s) trouvé(s) dans la traduction",
-                    font=('Segoe UI Emoji', 12),
-                    bg=theme["bg"],
-                    fg=theme["fg"]
-                )
-                count_label.pack(pady=(5, 0))
-                
-                # Zone de texte avec scrollbar
-                text_frame = tk.Frame(issues_window, bg=theme["bg"])
-                text_frame.pack(fill='both', expand=True, padx=10, pady=5)
-                
-                text_area = ScrolledText(
-                    text_frame,
-                    font=('Courier New', 10),
-                    wrap=tk.WORD,
-                    bg=theme["entry_bg"],
-                    fg=theme["entry_fg"],
-                    selectbackground=theme["select_bg"],
-                    selectforeground=theme["select_fg"]
-                )
-                text_area.pack(fill='both', expand=True)
-                
-                # Formater et insérer les problèmes
-                content = ""
-                issues_by_type = {}
-                for issue in issues:
-                    issue_type = issue['type']
-                    if issue_type not in issues_by_type:
-                        issues_by_type[issue_type] = []
-                    issues_by_type[issue_type].append(issue)
-                
-                for issue_type, type_issues in issues_by_type.items():
-                    content += f"🔸 {self._get_issue_type_name(issue_type)}\n"
-                    content += "-" * 50 + "\n"
-                    
-                    for issue in type_issues:
-                        content += f"Ligne {issue['line']}: {issue['description']}\n"
-                        if issue.get('old_line'):
-                            content += f"  OLD (ligne {issue['old_line']}): {issue.get('old_content', 'N/A')}\n"
-                        if issue.get('new_content'):
-                            content += f"  NEW: {issue['new_content']}\n"
-                        content += "\n"
-                    
+                for issue in type_issues:
+                    content += f"Ligne {issue['line']}: {issue['description']}\n"
+                    if issue.get('old_line'):
+                        content += f"  OLD (ligne {issue['old_line']}): {issue.get('old_content', 'N/A')}\n"
+                    if issue.get('new_content'):
+                        content += f"  NEW: {issue['new_content']}\n"
                     content += "\n"
                 
-                text_area.insert('1.0', content)
-                text_area.configure(state='disabled')  # Lecture seule
-                
-                # Boutons
-                button_frame = tk.Frame(issues_window, bg=theme["bg"])
-                button_frame.pack(fill='x', padx=10, pady=10)
-                
-                info_label = tk.Label(
-                    button_frame,
-                    text="💡 Ces problèmes peuvent causer des erreurs dans le jeu",
-                    font=('Segoe UI Emoji', 9),
-                    bg=theme["bg"],
-                    fg=theme["fg"]
-                )
-                info_label.pack(side='left')
-                
-                btn_close = tk.Button(
-                    button_frame,
-                    text="✅ Compris",
-                    font=('Segoe UI Emoji', 10),
-                    bg=theme["accent"],
-                    fg=theme["button_fg"],
-                    command=issues_window.destroy
-                )
-                btn_close.pack(side='right')
-                
-            except Exception as e:
-                log_message("ERREUR", f"Erreur affichage problèmes cohérence", e)
+                content += "\n"
+            
+            text_area.insert('1.0', content)
+            text_area.configure(state='disabled')  # Lecture seule
+            
+            # Boutons
+            button_frame = tk.Frame(issues_window, bg=theme["bg"])
+            button_frame.pack(fill='x', padx=10, pady=10)
+            
+            info_label = tk.Label(
+                button_frame,
+                text="💡 Ces problèmes peuvent causer des erreurs dans le jeu",
+                font=('Segoe UI Emoji', 9),
+                bg=theme["bg"],
+                fg=theme["fg"]
+            )
+            info_label.pack(side='left')
+            
+            btn_close = tk.Button(
+                button_frame,
+                text="✅ Compris",
+                font=('Segoe UI Emoji', 10),
+                bg=theme["accent"],
+                fg="#000000",
+                command=issues_window.destroy
+            )
+            btn_close.pack(side='right')
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur affichage problèmes cohérence", e)
 
     def _get_issue_type_name(self, issue_type):
         """Retourne le nom lisible d'un type de problème"""
@@ -2460,7 +2524,6 @@ class TraducteurRenPyPro:
             # ✅ CORRECTION : Nettoyer le dossier temporaire avec nouvelle structure
             if self.original_path:
                 from utils.constants import FOLDERS
-                from utils.logging import extract_game_name
                 
                 game_name = extract_game_name(self.original_path)
                 temp_base = FOLDERS["temp"]
@@ -2513,37 +2576,8 @@ class TraducteurRenPyPro:
         except Exception as e:
             log_message("ERREUR", "Erreur lors de la réinitialisation", e)
             messagebox.showerror("❌ Erreur", f"Erreur lors de la réinitialisation:\n{str(e)}")
-            
-            # Réinitialiser SEULEMENT la base de données
-            file_manager.reset()  # Mode dossier, fichiers ouverts, etc.
-            
-            # Réinitialiser les variables de session
-            self._save_mode = None
-            self.extraction_results = None
-            self.last_extraction_time = 0
-            self.last_reconstruction_time = 0
-            
-            # Remettre le titre par défaut (enlever "Mode Dossier")
-            self.root.title(WINDOW_CONFIG["title"])
-            
-            # Remettre les stats à "Prêt" mais garder le chemin du fichier
-            self.label_stats.config(text="📊 Prêt")
-            
-            messagebox.showinfo(
-                "🔄 Réinitialisation", 
-                "Base de données nettoyée :\n\n"
-                "✅ Mode dossier réinitialisé\n"
-                "✅ Mode de sauvegarde oublié\n"
-                "✅ Temps de session remis à zéro\n"
-                "✅ Dossier temporaire nettoyé\n\n"
-                "📄 Le fichier actuel reste chargé."
-            )
-            
-        except Exception as e:
-            log_message("ERREUR", "Erreur lors de la réinitialisation", e)
-            messagebox.showerror("❌ Erreur", f"Erreur lors de la réinitialisation:\n{str(e)}")
 
-    def create_game_structure_on_demand(game_name):
+    def create_game_structure_on_demand(self, game_name):
         """Crée la structure pour un jeu spécifique à la demande"""
         try:
             from utils.constants import FOLDERS
@@ -2622,13 +2656,13 @@ class TraducteurRenPyPro:
         messagebox.showinfo("🧹 Nettoyage", "Page nettoyée.")
 
     def update_window_title(self, remaining_files=None):
-            """Met à jour le titre de la fenêtre"""
-            base_title = WINDOW_CONFIG["title"]
-            
-            if file_manager.is_folder_mode and remaining_files is not None:
-                self.root.title(f"{base_title} - Mode Dossier ({remaining_files} fichiers restants)")
-            else:
-                self.root.title(base_title)
+        """Met à jour le titre de la fenêtre"""
+        base_title = WINDOW_CONFIG["title"]
+        
+        if file_manager.is_folder_mode and remaining_files is not None:
+            self.root.title(f"{base_title} - Mode Dossier ({remaining_files} fichiers restants)")
+        else:
+            self.root.title(base_title)
 
     def fermer_application(self):
         """Gestion de la fermeture propre de l'application avec confirmation"""
@@ -2664,11 +2698,19 @@ class TraducteurRenPyPro:
         print("3. Les deux doivent fonctionner sans conflit")
         print("4. Vérifiez que Ctrl+V fonctionne même avec le message d'invitation\n")
 
-    # =============================================================================
-    # FONCTION PRINCIPALE
-    # =============================================================================
-    
+# =============================================================================
+# FONCTIONS UTILITAIRES GLOBALES
+# =============================================================================
+
+def get_current_game_name():
+    """Récupère le nom du jeu actuellement chargé"""
+    global app_instance
+    if app_instance and app_instance.original_path:
+        return extract_game_name(app_instance.original_path)
+    return "Projet_Inconnu"
+
 def main():
+    """Fonction principale"""
     print("🎬 Lancement de main()")
     app = TraducteurRenPyPro()
     print("✅ Classe instanciée")

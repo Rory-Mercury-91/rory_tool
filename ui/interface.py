@@ -1,6 +1,6 @@
 # ui/interface.py
 # Main Interface Components
-# Created for Traducteur Ren'Py Pro v2.2.0
+# Created for Traducteur Ren'Py Pro v2.3.0
 
 """
 Module des composants d'interface utilisateur
@@ -101,7 +101,7 @@ class SaveModeDialog:
             text="❌ Annuler",
             font=('Segoe UI Emoji', 10),
             bg=theme["danger"],
-            fg=theme["button_fg"],
+            fg="#000000",
             activebackground='#b02a37',
             bd=0,
             pady=8,
@@ -327,7 +327,7 @@ Développé pour la traduction de scripts Ren'Py
 • Interface moderne avec thèmes
 • Sauvegarde automatique de sécurité
 
-🎯 Nouveautés v2.2.0:
+🎯 Nouveautés v2.3.0:
 • Architecture refactorisée
 • Validation avancée des fichiers Ren'Py
 • Contrôle de l'ouverture automatique

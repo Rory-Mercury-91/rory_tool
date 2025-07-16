@@ -1,8 +1,18 @@
 {
-    "files.exclude": {
-        "**/*.rpyc": true,
-        "**/*.rpa": true,
-        "**/*.rpymc": true,
-        "**/cache/": true
-    }
+  // --- exclusion de fichiers inutiles pour l’explorateur VS Code
+  "files.exclude": {
+    "**/*.rpyc": true,
+    "**/*.rpa": true,
+    "**/*.rpymc": true,
+    "**/cache/": true
+  },
+
+  // --- chargement de votre workspace comme PYTHONPATH
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
+
+  // (optionnel) préciser à Pylance d’utiliser extraPaths pour les imports
+  "python.analysis.packageIndexDepths": {
+    "${workspaceFolder}": 1
+  }
 }

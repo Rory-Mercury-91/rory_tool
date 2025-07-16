@@ -1,7 +1,6 @@
 Envoie du commit sur git pour changement du code
 ❯❯❯ git add .
-    git commit -m "Changement du numéro de version vers 1.8.0"
+    git commit -m ""
 
 Envoie du tag version pour créer le build… modifier le numéro de version.
-❯❯❯ git tag v1.8.0
-    git push origin v1.8.0
+❯❯❯ git push origin v2.2.0

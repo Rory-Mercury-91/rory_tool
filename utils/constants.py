@@ -1,6 +1,6 @@
 # utils/constants.py - STRUCTURE CORRIGÉE
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v2.2.0
+# Created for Traducteur Ren'Py Pro v2.3.0
 
 """
 Module contenant toutes les constantes de l'application
@@ -9,7 +9,7 @@ Module contenant toutes les constantes de l'application
 import os
 
 # Version de l'application
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 # ✅ CORRECTION : Dossier config renommé
 FOLDERS = {
@@ -56,7 +56,7 @@ THEMES = {
 # Configuration des fenêtres
 WINDOW_CONFIG = {
     "title": f"🎮 Traducteur Ren'Py Pro v{VERSION}",
-    "geometry": "1100x700",
+    "geometry": "1300x800",
     "min_size": (1300, 800)
 }
 
@@ -74,7 +74,6 @@ SPECIAL_CODES = [
     r'--',           # Tirets doubles
     r'—',            # Tiret cadratin
     r'–',            # Tiret demi-cadratin
-    r'\.\.\.+',      # Points de suspension
 ]
 
 # Ordres de protection pour les textes vides
