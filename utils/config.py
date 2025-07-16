@@ -1,6 +1,6 @@
 # utils/config.py
 # Configuration Management Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module de gestion de la configuration et des préférences utilisateur
@@ -8,13 +8,16 @@ Module de gestion de la configuration et des préférences utilisateur
 
 import json
 import os
-from .constants import DEFAULT_CONFIG, FILE_NAMES, VERSION
+from .constants import DEFAULT_CONFIG, FILE_NAMES, VERSION, FOLDERS, ensure_folders_exist
 from .logging import log_message
 
 class ConfigManager:
     """Gestionnaire de configuration de l'application"""
     
     def __init__(self):
+        # ✅ CORRECTION : S'assurer que le dossier configs existe
+        ensure_folders_exist()
+        
         self.config_file = FILE_NAMES["config"]
         self.config = DEFAULT_CONFIG.copy()
         self.load_config()
@@ -38,12 +41,17 @@ class ConfigManager:
     def save_config(self):
         """Sauvegarde la configuration dans le fichier JSON"""
         try:
+            # ✅ CORRECTION : S'assurer que le dossier existe avant de sauvegarder
+            config_dir = os.path.dirname(self.config_file)
+            if config_dir and not os.path.exists(config_dir):
+                os.makedirs(config_dir, exist_ok=True)
+            
             # Mettre à jour la version
             self.config["version"] = VERSION
             
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, ensure_ascii=False, indent=2)
-            log_message("INFO", f"Configuration v{VERSION} sauvegardée")
+            log_message("INFO", f"Configuration v{VERSION} sauvegardée dans {FOLDERS['configs']}")
         except Exception as e:
             log_message("WARNING", "Impossible de sauvegarder la configuration", e)
     

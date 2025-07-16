@@ -1,6 +1,6 @@
 # core/coherence_checker.py
 # Coherence Checker Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module de vérification de la cohérence entre lignes OLD et NEW
@@ -439,67 +439,77 @@ class CoherenceChecker:
         return issues
     
     def _create_warning_file(self, original_filepath, issues):
-            """Crée le fichier d'avertissement avec les problèmes détectés dans le dossier avertissements"""
-            try:
-                from utils.constants import FOLDERS, ensure_folders_exist
+        """CORRIGÉ : Crée le fichier d'avertissement dans l'arborescence organisée"""
+        try:
+            from utils.constants import FOLDERS, ensure_folders_exist
+            from utils.logging import extract_game_name
+            
+            # S'assurer que le dossier existe
+            ensure_folders_exist()
+            
+            # ✅ CORRECTION : Structure organisée par jeu
+            game_name = extract_game_name(original_filepath)
+            warnings_root = FOLDERS["warnings"]
+            game_warnings_folder = os.path.join(warnings_root, game_name)
+            
+            # Créer le dossier d'avertissements du jeu
+            os.makedirs(game_warnings_folder, exist_ok=True)
+            
+            base_name = os.path.splitext(os.path.basename(original_filepath))[0]
+            warning_file = os.path.join(game_warnings_folder, f"{base_name}_avertissement.txt")
+            
+            with open(warning_file, 'w', encoding='utf-8') as f:
+                f.write("=" * 60 + "\n")
+                f.write("RAPPORT DE CONTRÔLE DE COHÉRENCE OLD/NEW\n")
+                f.write("=" * 60 + "\n")
+                f.write(f"Jeu: {game_name}\n")
+                f.write(f"Fichier analysé: {os.path.basename(original_filepath)}\n")
+                f.write(f"Date: {self._get_current_datetime()}\n")
+                f.write(f"Problèmes détectés: {len(issues)}\n")
+                f.write("=" * 60 + "\n\n")
                 
-                # S'assurer que le dossier existe
-                ensure_folders_exist()
+                # Grouper par type
+                issues_by_type = {}
+                for issue in issues:
+                    issue_type = issue['type']
+                    if issue_type not in issues_by_type:
+                        issues_by_type[issue_type] = []
+                    issues_by_type[issue_type].append(issue)
                 
-                base_name = os.path.splitext(os.path.basename(original_filepath))[0]
-                warning_file = os.path.join(FOLDERS["warnings"], f"{base_name}_avertissement.txt")
-                
-                with open(warning_file, 'w', encoding='utf-8') as f:
-                    f.write("=" * 60 + "\n")
-                    f.write("RAPPORT DE CONTRÔLE DE COHÉRENCE OLD/NEW\n")
-                    f.write("=" * 60 + "\n")
-                    f.write(f"Fichier analysé: {os.path.basename(original_filepath)}\n")
-                    f.write(f"Date: {self._get_current_datetime()}\n")
-                    f.write(f"Problèmes détectés: {len(issues)}\n")
-                    f.write("=" * 60 + "\n\n")
+                # Écrire chaque type
+                for issue_type, type_issues in issues_by_type.items():
+                    f.write(f"🔸 {self._get_issue_type_name(issue_type)}\n")
+                    f.write("-" * 40 + "\n")
                     
-                    # Grouper par type
-                    issues_by_type = {}
-                    for issue in issues:
-                        issue_type = issue['type']
-                        if issue_type not in issues_by_type:
-                            issues_by_type[issue_type] = []
-                        issues_by_type[issue_type].append(issue)
-                    
-                    # Écrire chaque type
-                    for issue_type, type_issues in issues_by_type.items():
-                        f.write(f"🔸 {self._get_issue_type_name(issue_type)}\n")
-                        f.write("-" * 40 + "\n")
+                    for issue in type_issues:
+                        f.write(f"Ligne {issue['line']}: {issue['description']}\n")
                         
-                        for issue in type_issues:
-                            f.write(f"Ligne {issue['line']}: {issue['description']}\n")
-                            
-                            if issue.get('old_line'):
-                                f.write(f"  OLD (ligne {issue['old_line']}): {issue.get('old_content', 'N/A')}\n")
-                            if issue.get('new_content'):
-                                f.write(f"  NEW: {issue['new_content']}\n")
-                            
-                            f.write("\n")
+                        if issue.get('old_line'):
+                            f.write(f"  OLD (ligne {issue['old_line']}): {issue.get('old_content', 'N/A')}\n")
+                        if issue.get('new_content'):
+                            f.write(f"  NEW: {issue['new_content']}\n")
                         
                         f.write("\n")
                     
-                    # Résumé final
-                    f.write("=" * 60 + "\n")
-                    f.write("RÉSUMÉ\n")
-                    f.write("=" * 60 + "\n")
-                    for issue_type, type_issues in issues_by_type.items():
-                        f.write(f"{self._get_issue_type_name(issue_type)}: {len(type_issues)} problème(s)\n")
-                    
                     f.write("\n")
-                    f.write("⚠️  Ces problèmes peuvent causer des erreurs dans le jeu.\n")
-                    f.write("💡 Vérifiez et corrigez les incohérences avant de finaliser la traduction.\n")
                 
-                log_message("INFO", f"Fichier d'avertissement créé: {warning_file}")
-                return warning_file
+                # Résumé final
+                f.write("=" * 60 + "\n")
+                f.write("RÉSUMÉ\n")
+                f.write("=" * 60 + "\n")
+                for issue_type, type_issues in issues_by_type.items():
+                    f.write(f"{self._get_issue_type_name(issue_type)}: {len(type_issues)} problème(s)\n")
                 
-            except Exception as e:
-                log_message("ERREUR", f"Impossible de créer le fichier d'avertissement", e)
-                return None
+                f.write("\n")
+                f.write("⚠️  Ces problèmes peuvent causer des erreurs dans le jeu.\n")
+                f.write("💡 Vérifiez et corrigez les incohérences avant de finaliser la traduction.\n")
+            
+            log_message("INFO", f"Fichier d'avertissement créé: {game_name}/{os.path.basename(warning_file)}")
+            return warning_file
+            
+        except Exception as e:
+            log_message("ERREUR", f"Impossible de créer le fichier d'avertissement", e)
+            return None
     
     def _get_issue_type_name(self, issue_type):
         """Retourne le nom lisible d'un type de problème"""

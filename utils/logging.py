@@ -1,6 +1,6 @@
 # utils/logging.py
 # Logging System Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module de gestion des logs
@@ -10,11 +10,12 @@ import datetime
 import os
 import re
 from .constants import FILE_NAMES
+from utils.constants import FOLDERS
 
 def initialize_log():
     """Initialise/réinitialise le fichier log au démarrage"""
     try:
-        # Créer le dossier logs s'il n'existe pas
+        # Créer le dossier configs s'il n'existe pas
         log_dir = os.path.dirname(FILE_NAMES["log"])
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
@@ -90,55 +91,71 @@ def anonymize_path(path):
     import getpass
     username = getpass.getuser()
     anonymized = path.replace(username, "USER")
-    anonymized = re.sub(r'[A-Z]:\\.*?\\', r'X:\\...\\', anonymized)
+    # ✅ CORRECTION : Échapper correctement les backslashes
+    anonymized = re.sub(r'[A-Z]:[\\].*?[\\]', r'X:\\...\\', anonymized)
     return anonymized
 
 def extract_game_name(file_path):
     """
-    Extrait le nom du jeu depuis le chemin de fichier
+    ✅ CORRECTION : Extrait le nom du jeu principal depuis le chemin
     
-    Args:
-        file_path (str): Chemin du fichier
-        
-    Returns:
-        str: Nom du jeu formaté
+    Exemple:
+    C:\\Users\\Rory Mercury 91\\Documents\\GuiltyPleasure-0.49-pc\\game\\tl\\fr_zenpy_DeepL_andric31
+    -> GuiltyPleasure-0.49-pc
     """
     try:
-        # Normaliser le chemin
-        normalized_path = file_path.replace('\\', '/')
-        path_parts = normalized_path.split('/')
+        if not file_path:
+            return "Projet_Inconnu"
         
-        # Chercher un dossier qui ressemble à un nom de jeu
-        for part in reversed(path_parts):
-            # Ignorer les dossiers techniques
-            if part.lower() in ['game', 'tl', 'french', 'english', 'scripts', 'script']:
-                continue
-            if part.lower().startswith('script') or part.lower().endswith('.rpy'):
+        # Normaliser le chemin
+        normalized_path = os.path.normpath(file_path)
+        path_parts = normalized_path.split(os.sep)
+        
+        # Debug : afficher le chemin pour comprendre
+        log_message("DEBUG", f"Chemin analysé: {file_path}")
+        log_message("DEBUG", f"Parties du chemin: {path_parts}")
+        
+        # Chercher le dossier principal du jeu
+        # On veut trouver le dossier qui contient "game" ou "tl"
+        for i, part in enumerate(path_parts):
+            part_lower = part.lower()
+            
+            # Si on trouve "game" ou "tl", le dossier parent est le jeu
+            if part_lower in ['game', 'tl']:
+                if i > 0:
+                    game_folder = path_parts[i - 1]
+                    log_message("DEBUG", f"Nom du jeu détecté: {game_folder}")
+                    return game_folder
+        
+        # Si pas trouvé par la méthode game/tl, chercher des patterns typiques
+        for i, part in enumerate(path_parts):
+            part_lower = part.lower()
+            
+            # Ignorer les dossiers système et utilisateur
+            if part_lower in ['documents', 'desktop', 'downloads', 'users', 'program files', 'windows']:
                 continue
             
-            # Si le dossier contient un nom de jeu potentiel
-            if len(part) > 3 and not part.isdigit():
-                # Nettoyer le nom (versions, caractères spéciaux)
-                clean_name = re.sub(r'-v?\d+\.?\d*.*', '', part)
-                clean_name = re.sub(r'[-_]', ' ', clean_name)
+            # Chercher des patterns de nom de jeu
+            if (len(part) > 3 and 
+                not part.isdigit() and 
+                not part_lower.startswith('user') and
+                not part_lower in ['game', 'tl', 'french', 'english', 'scripts', 'script']):
                 
-                # Capitaliser correctement
-                words = clean_name.split()
-                formatted_words = []
-                for word in words:
-                    if word.lower() in ['vn', 'rpg', 'sim']:
-                        formatted_words.append(word.upper())
-                    else:
-                        formatted_words.append(word.capitalize())
-                
-                return ' '.join(formatted_words)
+                # Vérifier si c'est probablement un nom de jeu
+                if (any(char.isalpha() for char in part) and 
+                    ('.' in part or '-' in part or len(part) > 5)):
+                    
+                    log_message("DEBUG", f"Nom du jeu détecté par pattern: {part}")
+                    return part
         
-        # Fallback: utiliser le nom du fichier
-        filename = os.path.basename(file_path).replace('.rpy', '')
-        return filename.replace('_', ' ').title()
+        # Fallback : utiliser le nom du fichier
+        filename = os.path.basename(file_path)
+        if filename.endswith('.rpy'):
+            filename = filename[:-4]  # Enlever .rpy
+        
+        log_message("DEBUG", f"Fallback nom du jeu: {filename}")
+        return filename if filename else "Projet_Inconnu"
         
     except Exception as e:
         log_message("WARNING", f"Impossible d'extraire le nom du jeu de {anonymize_path(file_path)}", e)
-        return "Projet Inconnu"
-
-# SUPPRIMÉ: log_temps_performance() - Plus nécessaire
+        return "Projet_Inconnu"

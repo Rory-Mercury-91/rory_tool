@@ -1,6 +1,6 @@
 # core/reconstruction.py
 # Reconstruction Functions Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module de reconstruction des fichiers traduits
@@ -34,30 +34,24 @@ class FileReconstructor:
         self.empty_translations = []
     
     def load_file_content(self, file_content, original_path):
-        """
-        Charge le contenu du fichier à reconstruire
-
-        Args:
-            file_content (list): Lignes du fichier original
-            original_path (str): Chemin du fichier original
-        """
-        from core.extraction import extract_game_name
+        """Charge le contenu avec extraction du nom de jeu"""
+        from utils.logging import extract_game_name
         from utils.constants import FOLDERS
 
-        # Conserver le contenu et le chemin
-        self.file_content   = file_content[:]
-        self.original_path  = original_path
+        self.file_content = file_content[:]
+        self.original_path = original_path
 
-        # Déduire le nom du jeu et les dossiers temp
-        self.game_name       = extract_game_name(original_path)
-        temp_root            = FOLDERS["temp"]
-        self.mapping_folder  = os.path.join(temp_root, self.game_name, "fichiers_a_ne_pas_traduire")
+        # ✅ CORRECTION : Extraire et stocker le nom du jeu
+        self.game_name = extract_game_name(original_path)
+        temp_root = FOLDERS["temp"]
+        self.mapping_folder = os.path.join(temp_root, self.game_name, "fichiers_a_ne_pas_traduire")
         self.translate_folder = os.path.join(temp_root, self.game_name, "fichiers_a_traduire")
 
-        # Réinitialiser tous les attributs de reconstruction
+        # S'assurer que les dossiers existent
+        from utils.constants import ensure_game_structure
+        ensure_game_structure(self.game_name)
+
         self._reset_reconstruction_data()
-        self._load_mapping_files()
-        self._load_translation_files()
 
 
     
@@ -120,17 +114,21 @@ class FileReconstructor:
             raise
     
     def _load_mapping_files(self):
+        """CORRIGÉ : Charge les mappings depuis la nouvelle structure"""
         from utils.constants import FOLDERS
-        from core.extraction import get_file_base_name, extract_game_name
+        from core.extraction import get_file_base_name
+        from utils.logging import extract_game_name
 
-        file_base   = get_file_base_name(self.original_path)
-        game_name   = extract_game_name(self.original_path)
-        temp_root   = FOLDERS["temp"]
+        file_base = get_file_base_name(self.original_path)
+        game_name = extract_game_name(self.original_path)
+        
+        # ✅ CORRECTION : Utiliser la nouvelle structure
+        temp_root = FOLDERS["temp"]
         mapping_folder = os.path.join(temp_root, game_name, "fichiers_a_ne_pas_traduire")
 
         # Vérifier que les fichiers existent
-        mapping_file        = os.path.join(mapping_folder, f"{file_base}_mapping.txt")
-        positions_file      = os.path.join(mapping_folder, f"{file_base}_positions.json")
+        mapping_file = os.path.join(mapping_folder, f"{file_base}_mapping.txt")
+        positions_file = os.path.join(mapping_folder, f"{file_base}_positions.json")
 
         if not os.path.exists(mapping_file) or not os.path.exists(positions_file):
             raise FileNotFoundError(
@@ -171,37 +169,34 @@ class FileReconstructor:
 
         # Rétrocompatibilité ancien format
         if isinstance(position_data, list):
-            self.positions    = position_data
+            self.positions = position_data
             self.quote_counts = [1] * len(self.positions)
-            self.suffixes     = [""] * len(self.positions)
+            self.suffixes = [""] * len(self.positions)
         else:
-            self.positions    = position_data['positions']
+            self.positions = position_data['positions']
             self.quote_counts = position_data['quote_counts']
-            self.suffixes     = position_data.get('suffixes', [""] * len(self.positions))
+            self.suffixes = position_data.get('suffixes', [""] * len(self.positions))
 
-        log_message(
-            "INFO",
-            f"Mappings chargés depuis {mapping_folder} : "
-            f"{len(self.mapping)} codes, "
-            f"{len(self.asterix_mapping)} astérisques, "
-            f"{len(self.empty_mapping)} vides"
-        )
+        log_message("INFO", f"Mappings chargés depuis {mapping_folder}")
     
     def _load_translation_files(self):
+        """CORRIGÉ : Charge les traductions depuis la nouvelle structure"""
         from utils.constants import FOLDERS
-        from core.extraction import get_file_base_name, extract_game_name
+        from core.extraction import get_file_base_name
+        from utils.logging import extract_game_name
 
-        file_base       = get_file_base_name(self.original_path)
-        game_name       = extract_game_name(self.original_path)
-        temp_root       = FOLDERS["temp"]
+        file_base = get_file_base_name(self.original_path)
+        game_name = extract_game_name(self.original_path)
+        
+        # ✅ CORRECTION : Utiliser la nouvelle structure
+        temp_root = FOLDERS["temp"]
         translate_folder = os.path.join(temp_root, game_name, "fichiers_a_traduire")
 
         # Fichier principal
         main_trans_path = os.path.join(translate_folder, f"{file_base}.txt")
         if not os.path.exists(main_trans_path):
-            raise FileNotFoundError(
-                f"Fichier de traduction manquant : {main_trans_path}"
-            )
+            raise FileNotFoundError(f"Fichier de traduction manquant : {main_trans_path}")
+        
         with open(main_trans_path, "r", encoding="utf-8") as mf:
             self.translations = [line.rstrip("\n") for line in mf]
 
@@ -221,13 +216,7 @@ class FileReconstructor:
         else:
             self.empty_translations = []
 
-        log_message(
-            "INFO",
-            f"Traductions chargées depuis {translate_folder} : "
-            f"{len(self.translations)} principales, "
-            f"{len(self.asterix_translations)} astérisques, "
-            f"{len(self.empty_translations)} vides"
-        )
+        log_message("INFO", f"Traductions chargées depuis {translate_folder}")
     
     def _rebuild_content(self):
         """Reconstruit le contenu du fichier avec les traductions"""
@@ -418,24 +407,35 @@ class FileReconstructor:
             return False
     
     def _cleanup_temp_files(self):
-        """Nettoie les fichiers temporaires"""
+        """CORRIGÉ : Nettoie les fichiers temporaires dans la nouvelle structure"""
+        from utils.constants import FOLDERS
+        from core.extraction import get_file_base_name
+        from utils.logging import extract_game_name
+
         file_base = get_file_base_name(self.original_path)
+        game_name = extract_game_name(self.original_path)
+        
+        # ✅ CORRECTION : Nettoyer dans la nouvelle structure
+        temp_root = FOLDERS["temp"]
+        mapping_folder = os.path.join(temp_root, game_name, "fichiers_a_ne_pas_traduire")
         
         temp_files = [
-            f"{file_base}_mapping.txt",
-            f"{file_base}_positions.json",
-            f"{file_base}_asterix_mapping.txt",
-            f"{file_base}_empty_mapping.txt"
+            os.path.join(mapping_folder, f"{file_base}_mapping.txt"),
+            os.path.join(mapping_folder, f"{file_base}_positions.json"),
+            os.path.join(mapping_folder, f"{file_base}_asterix_mapping.txt"),
+            os.path.join(mapping_folder, f"{file_base}_empty_mapping.txt")
         ]
         
+        cleaned_count = 0
         for temp_file in temp_files:
             try:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
+                    cleaned_count += 1
             except Exception as e:
                 log_message("WARNING", f"Impossible de supprimer {temp_file}", e)
         
-        log_message("INFO", f"Fichiers temporaires nettoyés pour {file_base}")
+        log_message("INFO", f"Fichiers temporaires nettoyés pour {file_base}: {cleaned_count} fichiers")
 
 # Fonction de validation des traductions
 def validate_translations(original_count, translation_count, asterix_count=0, empty_count=0):

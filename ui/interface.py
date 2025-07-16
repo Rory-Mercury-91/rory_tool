@@ -1,6 +1,6 @@
 # ui/interface.py
 # Main Interface Components
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module des composants d'interface utilisateur
@@ -58,7 +58,7 @@ class SaveModeDialog:
         title_label = tk.Label(
             title_frame,
             text="💾 Choisissez le mode de sauvegarde",
-            font=('Segoe UI', 14, 'bold'),
+            font=('Segoe UI Emoji', 14, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -67,7 +67,7 @@ class SaveModeDialog:
         subtitle_label = tk.Label(
             title_frame,
             text="Ce choix sera mémorisé pour cette session",
-            font=('Segoe UI', 9),
+            font=('Segoe UI Emoji', 9),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -99,7 +99,7 @@ class SaveModeDialog:
         cancel_btn = tk.Button(
             self.dialog,
             text="❌ Annuler",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["danger"],
             fg=theme["button_fg"],
             activebackground='#b02a37',
@@ -117,7 +117,7 @@ class SaveModeDialog:
         btn = tk.Button(
             option_frame,
             text=title,
-            font=('Segoe UI', 11, 'bold'),
+            font=('Segoe UI Emoji', 11, 'bold'),
             bg=bg_color,
             fg=fg_color,
             bd=0,
@@ -129,7 +129,7 @@ class SaveModeDialog:
         desc = tk.Label(
             option_frame,
             text=description,
-            font=('Segoe UI', 9),
+            font=('Segoe UI Emoji', 9),
             bg=theme["frame_bg"],
             fg=theme["fg"],
             justify='left'
@@ -183,7 +183,7 @@ class ProgressDialog:
         message_label = tk.Label(
             main_frame,
             textvariable=self.progress_var,
-            font=('Segoe UI', 11),
+            font=('Segoe UI Emoji', 11),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -230,7 +230,7 @@ class StatusBar:
         self.status_label = tk.Label(
             self.frame,
             textvariable=self.status_var,
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             anchor='w'
         )
         self.status_label.pack(side='left', padx=(10, 0))
@@ -243,7 +243,7 @@ class StatusBar:
         self.time_label = tk.Label(
             self.frame,
             textvariable=self.time_var,
-            font=('Segoe UI', 9),
+            font=('Segoe UI Emoji', 9),
             anchor='e'
         )
         self.time_label.pack(side='right', padx=(0, 10))
@@ -327,7 +327,7 @@ Développé pour la traduction de scripts Ren'Py
 • Interface moderne avec thèmes
 • Sauvegarde automatique de sécurité
 
-🎯 Nouveautés v2.0.0:
+🎯 Nouveautés v2.2.0:
 • Architecture refactorisée
 • Validation avancée des fichiers Ren'Py
 • Contrôle de l'ouverture automatique

@@ -1,6 +1,6 @@
 # main.py
 # Traducteur Ren'Py Pro - Interface principale
-# v2.0.0 - Corrections finales des erreurs self
+# v2.2.0 - Corrections finales des erreurs self
 
 """
 Traducteur Ren'Py Pro
@@ -39,8 +39,8 @@ from core.file_manager import file_manager, FileOpener, TempFileManager
 from core.extraction import (
     TextExtractor,
     get_file_base_name,
-    extract_game_name,
 )
+from utils.logging import extract_game_name
 
 # Reconstruction
 from core.reconstruction import FileReconstructor
@@ -167,13 +167,18 @@ class TraducteurRenPyPro:
         print("➡️ Avant check_tutorial")
         self.check_tutorial()
 
+        # ✅ CORRECTION : Rendre l'instance accessible globalement
+        global app_instance
+        app_instance = self
+
         # 15. Logs et prints finaux
         print(f"DEBUG - file_content au démarrage: {hasattr(self, 'file_content')}")
         print(f"DEBUG - text_area au démarrage: {hasattr(self, 'text_area')}")
 
         log_message("INFO", f"=== DÉMARRAGE DU TRADUCTEUR REN'PY PRO v{VERSION} ===")
         log_message("INFO", "Dossiers organisés créés: temporaire, sauvegardes, avertissements, logs")
-    
+    app_instance = None
+
     def setup_window(self):
         """Configure la fenêtre principale"""
         self.root.title(WINDOW_CONFIG["title"])
@@ -272,7 +277,7 @@ class TraducteurRenPyPro:
         self.title_label = tk.Label(
             frame_header, 
             text=f"🎮 Traducteur Ren'Py Pro v{VERSION}",
-            font=('Segoe UI', 16, 'bold'),
+            font=('Segoe UI Emoji', 16, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -282,7 +287,7 @@ class TraducteurRenPyPro:
         self.subtitle_label = tk.Label(
             frame_header, 
             text="Extraction et traduction intelligente de scripts",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -292,7 +297,7 @@ class TraducteurRenPyPro:
         self.bouton_theme = tk.Button(
             frame_header, 
             text="☀️ Mode Clair" if config_manager.is_dark_mode_enabled() else "🌙 Mode Sombre",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg='#ffc107',
             fg='#000000',
             activebackground='#e0a800',
@@ -308,7 +313,7 @@ class TraducteurRenPyPro:
         self.bouton_quitter = tk.Button(
             frame_header,
             text="❌ Quitter",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg='#dc3545',
             fg='#ffffff',
             activebackground='#c82333',
@@ -337,7 +342,7 @@ class TraducteurRenPyPro:
         self.label_chemin = tk.Label(
             self.frame_info, 
             text="📄 Aucun fichier sélectionné", 
-            font=('Segoe UI', 9, 'bold'),
+            font=('Segoe UI Emoji', 9, 'bold'),
             bg=theme["frame_bg"], 
             fg=theme["accent"]
         )
@@ -346,7 +351,7 @@ class TraducteurRenPyPro:
         self.label_stats = tk.Label(
             self.frame_info, 
             text="📊 Prêt", 
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["frame_bg"], 
             fg=theme["fg"]
         )
@@ -367,7 +372,7 @@ class TraducteurRenPyPro:
         btn_fichier = tk.Button(
             frame_open,
             text="📂 Ouvrir Fichier .rpy",
-            font=('Segoe UI', 11),
+            font=('Segoe UI Emoji', 11),
             bg='#007bff',
             fg='#000000',
             activebackground='#0056b3',
@@ -381,7 +386,7 @@ class TraducteurRenPyPro:
         btn_dossier = tk.Button(
             frame_open,
             text="📁 Ouvrir Dossier",
-            font=('Segoe UI', 11),
+            font=('Segoe UI Emoji', 11),
             bg='#007bff',
             fg='#000000',
             activebackground='#0056b3',
@@ -395,7 +400,7 @@ class TraducteurRenPyPro:
         btn_sauvegardes = tk.Button(
             frame_open,
             text="🛡️ Sauvegardes",
-            font=('Segoe UI', 11),
+            font=('Segoe UI Emoji', 11),
             bg='#dc3545',
             fg='#000000',
             activebackground='#c82333',
@@ -409,7 +414,7 @@ class TraducteurRenPyPro:
         btn_reinit = tk.Button(
             frame_open,
             text="🔄 Réinitialiser",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg='#dc3545',
             fg='#000000',
             activebackground='#c82333',
@@ -420,61 +425,62 @@ class TraducteurRenPyPro:
         btn_reinit.grid(row=0, column=3, sticky="nsew", padx=5, pady=8)
 
     def create_actions_frame(self):
-        """Crée le frame des actions principales - VERSION UNIFIÉE"""
-        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
-        
-        frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
-        frame_actions.pack(padx=20, pady=5)
-        
-        # 8 colonnes : 2 verts + 1 mode + 5 utilitaires
-        for col in range(8):
-            frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
-        
-        # Boutons principaux (SANS TODO)
-        btn_extraire = tk.Button(
-            frame_actions, text="⚡ Extraire", font=('Segoe UI', 11),
-            bg='#28a745', fg='#000000', activebackground='#1e7e34',
-            bd=1, relief='solid', command=self.extraire_textes
-        )
-        btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
-
-        btn_reconstruire = tk.Button(
-            frame_actions, text="🔧 Reconstruire", font=('Segoe UI', 11),
-            bg='#28a745', fg='#000000', activebackground='#1e7e34',
-            bd=1, relief='solid', command=self.reconstruire_fichier
-        )
-        btn_reconstruire.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
-
-        # Bouton mode d'entrée
-        self.bouton_input_mode = tk.Button(
-            frame_actions, text="🎯 D&D", font=('Segoe UI', 10),
-            bg='#17a2b8', fg='#000000', activebackground='#138496',
-            bd=1, relief='solid', command=self.toggle_input_mode
-        )
-        self.bouton_input_mode.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
-
-        # Utilitaires (colonnes 3 à 7)
-        utilitaires = [
-            ("🧹 Nettoyer", self.nettoyer_page, '#ffc107'),
-            ("📁 Temporaire", self.ouvrir_dossier_temporaire, '#ffc107'),
-            ("⚠️ Avertissements", self.ouvrir_avertissements, '#dc3545'),
-            (f"📂 Auto : {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}", 
-            self.handle_toggle_auto_open, '#ffc107'),
-            (f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}", 
-            self.toggle_validation, '#ffc107')
-        ]
-        
-        for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
-            btn = tk.Button(frame_actions, text=txt, font=('Segoe UI', 10),
-                        bg=couleur, fg='#000000', 
-                        activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37',
-                        bd=1, relief='solid', command=cmd)
-            btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
+            """Crée le frame des actions principales - VERSION UNIFIÉE"""
+            theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
             
-            if cmd == self.handle_toggle_auto_open:
-                self.bouton_auto_open = btn
-            elif cmd == self.toggle_validation:
-                self.bouton_validation = btn
+            frame_actions = tk.Frame(self.root, height=80, bg=theme["bg"])
+            frame_actions.pack(padx=20, pady=5)
+            
+            # 9 colonnes : 2 verts + 1 mode + 6 utilitaires
+            for col in range(9):
+                frame_actions.columnconfigure(col, weight=1, uniform="grp_act")
+            
+            # Boutons principaux (SANS TODO)
+            btn_extraire = tk.Button(
+                frame_actions, text="⚡ Extraire", font=('Segoe UI Emoji', 11),
+                bg='#28a745', fg='#000000', activebackground='#1e7e34',
+                bd=1, relief='solid', command=self.extraire_textes
+            )
+            btn_extraire.grid(row=0, column=0, sticky="nsew", padx=5, pady=15)
+
+            btn_reconstruire = tk.Button(
+                frame_actions, text="🔧 Reconstruire", font=('Segoe UI Emoji', 11),
+                bg='#28a745', fg='#000000', activebackground='#1e7e34',
+                bd=1, relief='solid', command=self.reconstruire_fichier
+            )
+            btn_reconstruire.grid(row=0, column=1, sticky="nsew", padx=5, pady=15)
+
+            # Bouton mode d'entrée
+            self.bouton_input_mode = tk.Button(
+                frame_actions, text="🎯 D&D", font=('Segoe UI Emoji', 10),
+                bg='#17a2b8', fg='#000000', activebackground='#138496',
+                bd=1, relief='solid', command=self.toggle_input_mode
+            )
+            self.bouton_input_mode.grid(row=0, column=2, sticky="nsew", padx=5, pady=15)
+
+            # Utilitaires (colonnes 3 à 8)
+            utilitaires = [
+                ("🧹 Nettoyer", self.nettoyer_page, '#ffc107'),
+                ("📁 Temporaire", self.ouvrir_dossier_temporaire, '#ffc107'),
+                ("⚠️ Avertissements", self.ouvrir_avertissements, '#dc3545'),
+                (f"📂 Auto : {'ON' if config_manager.is_auto_open_enabled() else 'OFF'}", 
+                self.handle_toggle_auto_open, '#ffc107'),
+                (f"✅ Valid: {'ON' if config_manager.is_validation_enabled() else 'OFF'}", 
+                self.toggle_validation, '#ffc107'),
+                ("🎓 Aide", self.afficher_tutoriel, '#ffc107')  # Nouveau bouton tutoriel
+            ]
+            
+            for idx, (txt, cmd, couleur) in enumerate(utilitaires, start=3):
+                btn = tk.Button(frame_actions, text=txt, font=('Segoe UI Emoji', 10),
+                            bg=couleur, fg='#000000' if couleur != '#6f42c1' else '#ffffff', 
+                            activebackground='#e0a800' if couleur == '#ffc107' else '#b02a37' if couleur == '#dc3545' else '#5a359a',
+                            bd=1, relief='solid', command=cmd)
+                btn.grid(row=0, column=idx, sticky="nsew", padx=5, pady=15)
+                
+                if cmd == self.handle_toggle_auto_open:
+                    self.bouton_auto_open = btn
+                elif cmd == self.toggle_validation:
+                    self.bouton_validation = btn
 
     def create_content_frame(self):
         """Crée la zone de contenu - VERSION UNIFIÉE avec modes"""
@@ -601,6 +607,14 @@ class TraducteurRenPyPro:
             except Exception as e:
                 print(f"💥 DEBUG - Erreur toggle_dark_mode: {e}")
                 log_message("ERREUR", "Erreur basculement thème", e)
+
+    def get_current_game_name():
+        """Récupère le nom du jeu actuellement chargé"""
+        global app_instance
+        if app_instance and app_instance.original_path:
+            from utils.logging import extract_game_name
+            return extract_game_name(app_instance.original_path)
+        return "Projet_Inconnu"
 
     def appliquer_theme(self):
         """✅ VERSION CORRIGÉE - Application du thème"""
@@ -1049,7 +1063,7 @@ class TraducteurRenPyPro:
                             Glissez un fichier .rpy ici pour le charger
                             
                             📂 Auto-Open: {auto_status}
-                            💡 Bouton violet pour mode Ctrl+V
+                            💡 Bouton bleu pour mode Ctrl+V
 
 
 
@@ -1066,7 +1080,7 @@ class TraducteurRenPyPro:
                             
                             🔄 Solutions alternatives :
                             • Utilisez les boutons 📂 "Ouvrir Fichier .rpy"
-                            • Basculez en mode Ctrl+V (bouton violet)
+                            • Basculez en mode Ctrl+V (bouton D&D bleu (ou gris D&D X)
                             
                             📂 Auto-Open: {auto_status}
 
@@ -1084,7 +1098,7 @@ class TraducteurRenPyPro:
                             ou les boutons ci-dessus
                             
                             📂 Auto-Open: {auto_status}
-                            💡 Bouton bleu pour mode D&D
+                            💡 Bouton violet pour mode D&D
 
 
 
@@ -1695,7 +1709,7 @@ class TraducteurRenPyPro:
             self.label_stats.config(text="❌ Erreur lors de l'extraction")
 
     def reconstruire_fichier(self):
-        """Reconstruit le fichier avec les traductions - VERSION SIMPLIFIÉE"""
+        """Reconstruit avec validation corrigée pour nouvelle structure"""
         if not self.file_content or not self.original_path:
             messagebox.showerror("❌ Erreur", MESSAGES["no_file_loaded"])
             return
@@ -1708,14 +1722,31 @@ class TraducteurRenPyPro:
                 messagebox.showerror("❌ Erreur", "Effectuez d'abord l'extraction du fichier")
                 return
             
-            # Validation si activée
+            # ✅ CORRECTION : Validation avec nouvelle structure
             if config_manager.is_validation_enabled():
                 extracted_count = self.extraction_results.get('extracted_count', 0)
                 asterix_count = self.extraction_results.get('asterix_count', 0)
                 empty_count = self.extraction_results.get('empty_count', 0)
                 
-                validation_result = validate_before_reconstruction(
-                    file_base, extracted_count, asterix_count, empty_count
+                # Construire les chemins avec la nouvelle structure
+                from utils.logging import extract_game_name
+                from utils.constants import FOLDERS
+                
+                game_name = extract_game_name(self.original_path)
+                temp_root = FOLDERS["temp"]
+                translate_folder = os.path.join(temp_root, game_name, "fichiers_a_traduire")
+                
+                # Chemins des fichiers de traduction
+                main_file_path = os.path.join(translate_folder, f"{file_base}.txt")
+                asterix_file_path = os.path.join(translate_folder, f"{file_base}_asterix.txt") if asterix_count > 0 else None
+                empty_file_path = os.path.join(translate_folder, f"{file_base}_empty.txt") if empty_count > 0 else None
+                
+                # Validation avec chemins complets
+                from core.validation import TranslationValidator
+                validator = TranslationValidator()
+                validation_result = validator.validate_all_files_with_paths(
+                    main_file_path, asterix_file_path, empty_file_path,
+                    extracted_count, asterix_count, empty_count
                 )
                 
                 if not validation_result['overall_valid']:
@@ -1731,8 +1762,8 @@ class TraducteurRenPyPro:
                     if not result:
                         return
             
-            # NOUVEAU : Gestion simplifiée du mode de sauvegarde
-            save_mode = 'new_file'  # Par défaut : nouveau fichier
+            # Gestion du mode de sauvegarde
+            save_mode = 'new_file'  # Par défaut
             
             # Mode fichier classique : demander le choix
             if hasattr(self, 'text_mode') and self.text_mode == "file":
@@ -1750,26 +1781,29 @@ class TraducteurRenPyPro:
                 save_mode = 'new_file'
                 print("📋 DEBUG - Mode presse-papier: forcer nouveau fichier")
             
-            # Reconstruction
-            from core.reconstruction import reconstruire_fichier as reconstruct_func
+            # ✅ CORRECTION : Reconstruction avec nouvelle structure
+            from core.reconstruction import FileReconstructor
             
             self.label_stats.config(text="🔧 Reconstruction en cours...")
             self.root.update()
             
             start_time = time.time()
-            result = reconstruct_func(self.file_content, self.original_path, save_mode)
+            reconstructor = FileReconstructor()
+            reconstructor.load_file_content(self.file_content, self.original_path)
+            result = reconstructor.reconstruct_file(save_mode)
             self.last_reconstruction_time = time.time() - start_time
             
             if result:
                 # Contrôle de cohérence si validation activée
                 if config_manager.is_validation_enabled():
+                    from core.coherence_checker import check_file_coherence
                     coherence_result = check_file_coherence(result['save_path'])
                     
                     if coherence_result['issues_found'] > 0:
                         response = messagebox.askyesnocancel(
                             "⚠️ Problèmes de cohérence détectés",
                             f"{coherence_result['issues_found']} problème(s) détecté(s) dans la traduction.\n\n"
-                            f"Un fichier d'avertissement a été créé dans le dossier 'avertissements'.\n\n"
+                            f"Un fichier d'avertissement a été créé dans le dossier 'avertissements/{game_name}'.\n\n"
                             f"• Oui = Ouvrir le fichier d'avertissement maintenant\n"
                             f"• Non = Continuer sans ouvrir\n"
                             f"• Annuler = Voir les détails ici"
@@ -1778,6 +1812,7 @@ class TraducteurRenPyPro:
                         if response is True:  # Oui - Ouvrir le fichier
                             try:
                                 if coherence_result.get('warning_file'):
+                                    from core.file_manager import FileOpener
                                     FileOpener.open_files([coherence_result['warning_file']], True)
                             except Exception as e:
                                 log_message("WARNING", f"Impossible d'ouvrir le fichier d'avertissement", e)
@@ -1810,6 +1845,7 @@ class TraducteurRenPyPro:
                 
                 # Ouvrir le fichier reconstruit si demandé
                 try:
+                    from core.file_manager import FileOpener
                     FileOpener.open_files([result['save_path']], config_manager.is_auto_open_enabled())
                 except:
                     pass
@@ -1869,11 +1905,11 @@ class TraducteurRenPyPro:
         title_frame.pack(fill='x', padx=20, pady=20)
         
         title_label = tk.Label(title_frame, text="💾 Choisissez le mode de sauvegarde",
-                font=('Segoe UI', 14, 'bold'), bg=theme["bg"], fg=theme["fg"])
+                font=('Segoe UI Emoji', 14, 'bold'), bg=theme["bg"], fg=theme["fg"])
         title_label.pack()
         
         subtitle_label = tk.Label(title_frame, text="Ce choix sera mémorisé pour cette session",
-                font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"])
+                font=('Segoe UI Emoji', 9), bg=theme["bg"], fg=theme["fg"])
         subtitle_label.pack(pady=(5, 0))
         
         # Options
@@ -1890,12 +1926,12 @@ class TraducteurRenPyPro:
         option1_frame.pack(fill='x', pady=10)
         
         btn_overwrite = tk.Button(option1_frame, text="🔄 Écraser le fichier original",
-                 font=('Segoe UI', 11, 'bold'), bg=theme["warning"], fg='#000000',
+                 font=('Segoe UI Emoji', 11, 'bold'), bg=theme["warning"], fg='#000000',
                  bd=0, pady=15, command=lambda: choisir_mode('overwrite'))
         btn_overwrite.pack(fill='x', padx=10, pady=10)
         
         label_overwrite = tk.Label(option1_frame, text="⚠️ Le fichier original sera remplacé par la traduction",
-                font=('Segoe UI', 9), bg=theme["frame_bg"], fg=theme["fg"])
+                font=('Segoe UI Emoji', 9), bg=theme["frame_bg"], fg=theme["fg"])
         label_overwrite.pack(pady=(0, 10))
         
         # Option 2: Créer nouveau fichier
@@ -1903,16 +1939,16 @@ class TraducteurRenPyPro:
         option2_frame.pack(fill='x', pady=10)
         
         btn_new_file = tk.Button(option2_frame, text="📝 Créer un nouveau fichier",
-                 font=('Segoe UI', 11, 'bold'), bg=theme["accent"], fg='#000000',
+                 font=('Segoe UI Emoji', 11, 'bold'), bg=theme["accent"], fg='#000000',
                  bd=0, pady=15, command=lambda: choisir_mode('new_file'))
         btn_new_file.pack(fill='x', padx=10, pady=10)
         
         label_new_file = tk.Label(option2_frame, text="✅ Garde l'original et crée un fichier traduit séparé\n💡 L'original sera automatiquement commenté",
-                font=('Segoe UI', 9), bg=theme["frame_bg"], fg=theme["fg"], justify='left')
+                font=('Segoe UI Emoji', 9), bg=theme["frame_bg"], fg=theme["fg"], justify='left')
         label_new_file.pack(pady=(0, 10))
         
         # Bouton annuler
-        btn_cancel = tk.Button(dialog, text="❌ Annuler", font=('Segoe UI', 10),
+        btn_cancel = tk.Button(dialog, text="❌ Annuler", font=('Segoe UI Emoji', 10),
                  bg=theme["danger"], fg='#000000', bd=0, pady=8,
                  command=dialog.destroy)
         btn_cancel.pack(pady=10)
@@ -1954,6 +1990,15 @@ class TraducteurRenPyPro:
         except Exception as e:
             log_message("ERREUR", "Erreur lors de l'ouverture du gestionnaire de sauvegardes", e)
             messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le gestionnaire de sauvegardes:\n{str(e)}")
+
+    def afficher_tutoriel(self):
+        """Affiche le tutoriel complet"""
+        try:
+            show_tutorial()
+            log_message("INFO", "Tutoriel affiché sur demande de l'utilisateur")
+        except Exception as e:
+            log_message("ERREUR", "Erreur affichage tutoriel", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'afficher le tutoriel:\n{str(e)}")
 
     def toggle_validation(self):
         """Bascule le mode de validation"""
@@ -2020,7 +2065,7 @@ class TraducteurRenPyPro:
             log_message("ERREUR", "Erreur basculement Auto-Open", e)
 
     def ouvrir_dossier_temporaire(self):
-        """Ouvre le dossier temporaire du jeu en cours avec structure complète"""
+        """CORRIGÉ : Ouvre le dossier temporaire avec structure complète"""
         try:
             if not self.original_path:
                 messagebox.showinfo(
@@ -2034,8 +2079,9 @@ class TraducteurRenPyPro:
             from utils.logging import extract_game_name
             game_name = extract_game_name(self.original_path)
             
-            # Construire le chemin du dossier temporaire
-            temp_base = "temporaires"
+            # ✅ CORRECTION : Construire le chemin complet
+            from utils.constants import FOLDERS
+            temp_base = FOLDERS["temp"]
             game_folder = os.path.join(temp_base, game_name)
             
             # Créer la structure complète si elle n'existe pas
@@ -2043,7 +2089,6 @@ class TraducteurRenPyPro:
                 game_folder,
                 os.path.join(game_folder, "fichiers_a_traduire"),
                 os.path.join(game_folder, "fichiers_a_ne_pas_traduire"),
-                os.path.join(game_folder, "fichiers_d_avertissement")
             ]
             
             created_folders = []
@@ -2060,7 +2105,6 @@ class TraducteurRenPyPro:
                     f"📁 temporaires/{game_name}/\n"
                     f"  ├── 📁 fichiers_a_traduire/\n"
                     f"  ├── 📁 fichiers_a_ne_pas_traduire/\n"
-                    f"  └── 📁 fichiers_d_avertissement/\n\n"
                     f"Le dossier va maintenant s'ouvrir."
                 )
             
@@ -2074,60 +2118,69 @@ class TraducteurRenPyPro:
             messagebox.showerror("❌ Erreur", f"Impossible d'ouvrir le dossier temporaire:\n{str(e)}")
 
     def ouvrir_avertissements(self):
-            """Ouvre le dossier avertissements ou affiche les fichiers disponibles"""
-            from utils.constants import FOLDERS
-            import glob
+        """CORRIGÉ : Ouvre le dossier avertissements avec structure organisée"""
+        from utils.constants import FOLDERS
+        from utils.logging import extract_game_name
+        import glob
+        
+        try:
+            # Structure organisée par jeu si un fichier est chargé
+            if self.original_path:
+                game_name = extract_game_name(self.original_path)
+                warnings_folder = os.path.join(FOLDERS["warnings"], game_name)
+                folder_title = f"avertissements/{game_name}"
+            else:
+                warnings_folder = FOLDERS["warnings"]
+                folder_title = "avertissements"
             
-            warnings_folder = FOLDERS["warnings"]
+            # Vérifier si le dossier existe et contient des fichiers
+            if not os.path.exists(warnings_folder):
+                messagebox.showinfo(
+                    "📁 Dossier avertissements",
+                    f"Le dossier '{folder_title}' n'existe pas encore.\n\n"
+                    f"Il sera créé automatiquement lors de la première validation\n"
+                    f"qui détecte des problèmes de cohérence."
+                )
+                return
             
-            try:
-                # Vérifier si le dossier existe et contient des fichiers
-                if not os.path.exists(warnings_folder):
-                    messagebox.showinfo(
-                        "📁 Dossier avertissements",
-                        f"Le dossier '{warnings_folder}' n'existe pas encore.\n\n"
-                        f"Il sera créé automatiquement lors de la première validation\n"
-                        f"qui détecte des problèmes de cohérence."
-                    )
-                    return
+            # Chercher les fichiers d'avertissement
+            warning_files = glob.glob(os.path.join(warnings_folder, "*_avertissement.txt"))
+            
+            if not warning_files:
+                result = messagebox.askyesno(
+                    "📁 Aucun avertissement",
+                    f"Le dossier '{folder_title}' est vide.\n\n"
+                    f"Aucun fichier d'avertissement trouvé.\n\n"
+                    f"Voulez-vous ouvrir le dossier quand même ?"
+                )
+                if result:
+                    self._open_folder(warnings_folder)
+                return
+            
+            # S'il y a un seul fichier, le proposer directement
+            if len(warning_files) == 1:
+                file_name = os.path.basename(warning_files[0])
+                result = messagebox.askyesnocancel(
+                    "📄 Fichier d'avertissement trouvé",
+                    f"Un fichier d'avertissement trouvé :\n{file_name}\n\n"
+                    f"• Oui = Ouvrir ce fichier\n"
+                    f"• Non = Ouvrir le dossier\n"
+                    f"• Annuler = Fermer"
+                )
                 
-                # Chercher les fichiers d'avertissement
-                warning_files = glob.glob(os.path.join(warnings_folder, "*_avertissement.txt"))
+                if result is True:  # Ouvrir le fichier
+                    from core.file_manager import FileOpener
+                    FileOpener.open_files([warning_files[0]], True)
+                elif result is False:  # Ouvrir le dossier
+                    self._open_folder(warnings_folder)
+            
+            # S'il y a plusieurs fichiers, afficher la liste
+            else:
+                self._show_warning_files_list(warning_files, warnings_folder)
                 
-                if not warning_files:
-                    result = messagebox.askyesno(
-                        "📁 Aucun avertissement",
-                        f"Le dossier '{warnings_folder}' est vide.\n\n"
-                        f"Aucun fichier d'avertissement trouvé.\n\n"
-                        f"Voulez-vous ouvrir le dossier quand même ?"
-                    )
-                    if result:
-                        self._open_folder(warnings_folder)
-                    return
-                
-                # S'il y a un seul fichier, le proposer directement
-                if len(warning_files) == 1:
-                    file_name = os.path.basename(warning_files[0])
-                    result = messagebox.askyesnocancel(
-                        "📄 Fichier d'avertissement trouvé",
-                        f"Un fichier d'avertissement trouvé :\n{file_name}\n\n"
-                        f"• Oui = Ouvrir ce fichier\n"
-                        f"• Non = Ouvrir le dossier\n"
-                        f"• Annuler = Fermer"
-                    )
-                    
-                    if result is True:  # Ouvrir le fichier
-                        FileOpener.open_files([warning_files[0]], True)
-                    elif result is False:  # Ouvrir le dossier
-                        self._open_folder(warnings_folder)
-                
-                # S'il y a plusieurs fichiers, afficher la liste
-                else:
-                    self._show_warning_files_list(warning_files, warnings_folder)
-                    
-            except Exception as e:
-                log_message("ERREUR", f"Erreur ouverture dossier avertissements", e)
-                messagebox.showerror("❌ Erreur", f"Impossible d'accéder aux avertissements:\n{str(e)}")
+        except Exception as e:
+            log_message("ERREUR", f"Erreur ouverture dossier avertissements", e)
+            messagebox.showerror("❌ Erreur", f"Impossible d'accéder aux avertissements:\n{str(e)}")
 
     def _open_folder(self, folder_path):
         """Ouvre un dossier avec l'explorateur de fichiers"""
@@ -2167,7 +2220,7 @@ class TraducteurRenPyPro:
             title_label = tk.Label(
                 header_frame,
                 text=f"📄 {len(warning_files)} fichier(s) d'avertissement trouvé(s)",
-                font=('Segoe UI', 14, 'bold'),
+                font=('Segoe UI Emoji', 14, 'bold'),
                 bg=theme["bg"],
                 fg=theme["fg"]
             )
@@ -2183,7 +2236,7 @@ class TraducteurRenPyPro:
             
             listbox = tk.Listbox(
                 listbox_frame,
-                font=('Segoe UI', 10),
+                font=('Segoe UI Emoji', 10),
                 bg=theme["entry_bg"],
                 fg=theme["entry_fg"],
                 selectbackground=theme["select_bg"],
@@ -2225,7 +2278,7 @@ class TraducteurRenPyPro:
             btn_open_file = tk.Button(
                 button_frame,
                 text="📄 Ouvrir le fichier sélectionné",
-                font=('Segoe UI', 10),
+                font=('Segoe UI Emoji', 10),
                 bg=theme["accent"],
                 fg=theme["button_fg"],
                 command=open_selected
@@ -2235,7 +2288,7 @@ class TraducteurRenPyPro:
             btn_open_folder = tk.Button(
                 button_frame,
                 text="📁 Ouvrir le dossier",
-                font=('Segoe UI', 10),
+                font=('Segoe UI Emoji', 10),
                 bg=theme["warning"],
                 fg='#000000',
                 command=open_folder
@@ -2245,7 +2298,7 @@ class TraducteurRenPyPro:
             btn_close = tk.Button(
                 button_frame,
                 text="❌ Fermer",
-                font=('Segoe UI', 10),
+                font=('Segoe UI Emoji', 10),
                 bg=theme["danger"],
                 fg=theme["button_fg"],
                 command=list_window.destroy
@@ -2284,7 +2337,7 @@ class TraducteurRenPyPro:
                 title_label = tk.Label(
                     header_frame,
                     text="⚠️ Problèmes de cohérence détectés",
-                    font=('Segoe UI', 16, 'bold'),
+                    font=('Segoe UI Emoji', 16, 'bold'),
                     bg=theme["bg"],
                     fg=theme["danger"]
                 )
@@ -2293,7 +2346,7 @@ class TraducteurRenPyPro:
                 count_label = tk.Label(
                     header_frame,
                     text=f"{len(issues)} problème(s) trouvé(s) dans la traduction",
-                    font=('Segoe UI', 12),
+                    font=('Segoe UI Emoji', 12),
                     bg=theme["bg"],
                     fg=theme["fg"]
                 )
@@ -2347,7 +2400,7 @@ class TraducteurRenPyPro:
                 info_label = tk.Label(
                     button_frame,
                     text="💡 Ces problèmes peuvent causer des erreurs dans le jeu",
-                    font=('Segoe UI', 9),
+                    font=('Segoe UI Emoji', 9),
                     bg=theme["bg"],
                     fg=theme["fg"]
                 )
@@ -2356,7 +2409,7 @@ class TraducteurRenPyPro:
                 btn_close = tk.Button(
                     button_frame,
                     text="✅ Compris",
-                    font=('Segoe UI', 10),
+                    font=('Segoe UI Emoji', 10),
                     bg=theme["accent"],
                     fg=theme["button_fg"],
                     command=issues_window.destroy
@@ -2384,7 +2437,7 @@ class TraducteurRenPyPro:
         return names.get(issue_type, issue_type)
 
     def reinitialiser(self):
-        """Réinitialise la base de données des fichiers ET nettoie le dossier temporaire"""
+        """CORRIGÉ : Réinitialise avec nettoyage de la nouvelle structure"""
         if self.last_extraction_time > 0 or self.last_reconstruction_time > 0:
             total_time = self.last_extraction_time + self.last_reconstruction_time
             result = messagebox.askyesno(
@@ -2404,10 +2457,10 @@ class TraducteurRenPyPro:
                 return
         
         try:
-            # Nettoyer le dossier temporaire si un fichier est chargé
+            # ✅ CORRECTION : Nettoyer le dossier temporaire avec nouvelle structure
             if self.original_path:
-                from utils.logging import extract_game_name
                 from utils.constants import FOLDERS
+                from utils.logging import extract_game_name
                 
                 game_name = extract_game_name(self.original_path)
                 temp_base = FOLDERS["temp"]
@@ -2425,9 +2478,8 @@ class TraducteurRenPyPro:
                                 shutil.rmtree(item_path)
                         
                         # Recréer la structure vide
-                        os.makedirs(os.path.join(game_folder, "fichiers_a_traduire"), exist_ok=True)
-                        os.makedirs(os.path.join(game_folder, "fichiers_a_ne_pas_traduire"), exist_ok=True)
-                        os.makedirs(os.path.join(game_folder, "fichiers_d_avertissement"), exist_ok=True)
+                        from utils.constants import ensure_game_structure
+                        ensure_game_structure(game_name)
                         
                         log_message("INFO", f"Dossier temporaire nettoyé pour {game_name}")
                     except Exception as e:
@@ -2461,6 +2513,73 @@ class TraducteurRenPyPro:
         except Exception as e:
             log_message("ERREUR", "Erreur lors de la réinitialisation", e)
             messagebox.showerror("❌ Erreur", f"Erreur lors de la réinitialisation:\n{str(e)}")
+            
+            # Réinitialiser SEULEMENT la base de données
+            file_manager.reset()  # Mode dossier, fichiers ouverts, etc.
+            
+            # Réinitialiser les variables de session
+            self._save_mode = None
+            self.extraction_results = None
+            self.last_extraction_time = 0
+            self.last_reconstruction_time = 0
+            
+            # Remettre le titre par défaut (enlever "Mode Dossier")
+            self.root.title(WINDOW_CONFIG["title"])
+            
+            # Remettre les stats à "Prêt" mais garder le chemin du fichier
+            self.label_stats.config(text="📊 Prêt")
+            
+            messagebox.showinfo(
+                "🔄 Réinitialisation", 
+                "Base de données nettoyée :\n\n"
+                "✅ Mode dossier réinitialisé\n"
+                "✅ Mode de sauvegarde oublié\n"
+                "✅ Temps de session remis à zéro\n"
+                "✅ Dossier temporaire nettoyé\n\n"
+                "📄 Le fichier actuel reste chargé."
+            )
+            
+        except Exception as e:
+            log_message("ERREUR", "Erreur lors de la réinitialisation", e)
+            messagebox.showerror("❌ Erreur", f"Erreur lors de la réinitialisation:\n{str(e)}")
+
+    def create_game_structure_on_demand(game_name):
+        """Crée la structure pour un jeu spécifique à la demande"""
+        try:
+            from utils.constants import FOLDERS
+            
+            # Structure par jeu
+            game_structure = [
+                # Temporaires
+                os.path.join(FOLDERS["temp"], game_name),
+                os.path.join(FOLDERS["temp"], game_name, "fichiers_a_traduire"),
+                os.path.join(FOLDERS["temp"], game_name, "fichiers_a_ne_pas_traduire"),
+                
+                # Sauvegardes
+                os.path.join(FOLDERS["backup"], game_name),
+                
+                # Avertissements
+                os.path.join(FOLDERS["warnings"], game_name)
+            ]
+            
+            created_folders = []
+            for folder in game_structure:
+                if not os.path.exists(folder):
+                    os.makedirs(folder, exist_ok=True)
+                    created_folders.append(folder)
+            
+            if created_folders:
+                print(f"✅ Structure créée pour '{game_name}':")
+                print(f"📁 temporaires/{game_name}/")
+                print(f"  ├── 📁 fichiers_a_traduire/")
+                print(f"  ├── 📁 fichiers_a_ne_pas_traduire/")
+                print(f"📁 sauvegardes/{game_name}/")
+                print(f"📁 avertissements/{game_name}/")
+            
+            return True
+        except Exception as e:
+            print(f"❌ Erreur création structure jeu '{game_name}': {e}")
+            return False
 
     def nettoyer_page(self):
         """Nettoie la page actuelle - VERSION ÉTENDUE"""

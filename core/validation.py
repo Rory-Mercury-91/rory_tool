@@ -1,6 +1,6 @@
 # core/validation.py
 # Validation and Security Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module de validation des fichiers et de sécurité
@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import datetime
+from utils.constants import FOLDERS
 from utils.logging import log_message
 
 class FileValidator:
@@ -149,20 +150,11 @@ class FileValidator:
         return result
 
 class BackupManager:
-    """Gestionnaire de sauvegardes automatiques"""
+    """CORRIGÉ : Gestionnaire de sauvegardes avec structure organisée"""
     
     @staticmethod
     def create_backup(filepath, backup_suffix=".backup"):
-        """
-        Crée une sauvegarde du fichier dans le dossier sauvegardes
-        
-        Args:
-            filepath (str): Chemin du fichier à sauvegarder
-            backup_suffix (str): Suffixe pour le fichier de sauvegarde
-            
-        Returns:
-            dict: Résultat de la sauvegarde
-        """
+        """Crée une sauvegarde dans l'arborescence organisée"""
         result = {
             'success': False,
             'backup_path': None,
@@ -171,19 +163,28 @@ class BackupManager:
         
         try:
             from utils.constants import FOLDERS, ensure_folders_exist
+            from utils.logging import extract_game_name
             
             if not os.path.exists(filepath):
                 result['error'] = "Fichier source introuvable"
                 return result
             
-            # S'assurer que le dossier existe
+            # S'assurer que les dossiers existent
             ensure_folders_exist()
             
-            # Générer un nom de backup unique dans le dossier sauvegardes
+            # ✅ CORRECTION : Structure organisée par jeu
+            game_name = extract_game_name(filepath)
+            backup_root = FOLDERS["backup"]
+            game_backup_folder = os.path.join(backup_root, game_name)
+            
+            # Créer le dossier de sauvegarde du jeu
+            os.makedirs(game_backup_folder, exist_ok=True)
+            
+            # Générer un nom de backup unique
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             base_name = os.path.splitext(os.path.basename(filepath))[0]
             backup_filename = f"{base_name}_{timestamp}{backup_suffix}"
-            backup_path = os.path.join(FOLDERS["backup"], backup_filename)
+            backup_path = os.path.join(game_backup_folder, backup_filename)
             
             # Créer la sauvegarde
             shutil.copy2(filepath, backup_path)
@@ -191,7 +192,7 @@ class BackupManager:
             result['success'] = True
             result['backup_path'] = backup_path
             
-            log_message("INFO", f"Sauvegarde créée: {backup_path}")
+            log_message("INFO", f"Sauvegarde créée: {game_name}/{backup_filename}")
             
         except Exception as e:
             result['error'] = str(e)
@@ -235,7 +236,7 @@ class BackupManager:
     @staticmethod
     def list_backups(filepath):
         """
-        Liste toutes les sauvegardes disponibles pour un fichier
+        ✅ CORRECTION : Liste toutes les sauvegardes disponibles pour un fichier depuis la nouvelle structure
         
         Args:
             filepath (str): Chemin du fichier original
@@ -246,27 +247,44 @@ class BackupManager:
         backups = []
         
         try:
-            directory = os.path.dirname(filepath)
+            from utils.logging import extract_game_name
+            
+            # Obtenir le nom du jeu et le dossier de sauvegarde
+            game_name = extract_game_name(filepath)
+            backup_folder = os.path.join(FOLDERS["backup"], game_name)
+            
+            # Vérifier que le dossier existe
+            if not os.path.exists(backup_folder):
+                log_message("INFO", f"Dossier de sauvegarde non trouvé: {backup_folder}")
+                return backups
+            
+            # Obtenir le nom de base du fichier pour filtrer les sauvegardes
             base_name = os.path.splitext(os.path.basename(filepath))[0]
             
-            # Chercher tous les fichiers de sauvegarde
-            for file in os.listdir(directory):
-                if file.startswith(base_name) and 'backup' in file.lower():
-                    backup_path = os.path.join(directory, file)
+            # Lister tous les fichiers dans le dossier de sauvegarde
+            for filename in os.listdir(backup_folder):
+                if (filename.startswith(base_name) and 
+                    ('backup' in filename.lower() or 'safety' in filename.lower())):
+                    
+                    backup_path = os.path.join(backup_folder, filename)
                     try:
                         stats = os.stat(backup_path)
                         backups.append({
                             'path': backup_path,
-                            'name': os.path.basename(backup_path),
+                            'name': filename,
                             'size': stats.st_size,
                             'created': datetime.datetime.fromtimestamp(stats.st_ctime),
-                            'modified': datetime.datetime.fromtimestamp(stats.st_mtime)
+                            'modified': datetime.datetime.fromtimestamp(stats.st_mtime),
+                            'game': game_name
                         })
-                    except:
+                    except Exception as e:
+                        log_message("WARNING", f"Impossible de lire les stats de {filename}", e)
                         continue
             
             # Trier par date de création (plus récent en premier)
             backups.sort(key=lambda x: x['created'], reverse=True)
+            
+            log_message("INFO", f"Sauvegardes trouvées pour {base_name}: {len(backups)}")
             
         except Exception as e:
             log_message("WARNING", f"Erreur lors de la liste des sauvegardes pour {filepath}", e)
@@ -279,7 +297,7 @@ class TranslationValidator:
     @staticmethod
     def validate_file_correspondence(extracted_count, translation_file_path):
         """
-        Valide qu'un fichier de traduction correspond aux textes extraits
+        ✅ CORRECTION : Valide qu'un fichier de traduction correspond aux textes extraits
         
         Args:
             extracted_count (int): Nombre de textes extraits
@@ -301,67 +319,109 @@ class TranslationValidator:
         try:
             if not os.path.exists(translation_file_path):
                 result['valid'] = False
-                result['errors'].append(f"Fichier de traduction introuvable: {translation_file_path}")
+                result['errors'].append(f"Fichier de traduction manquant: {translation_file_path}")
                 return result
+            
+            # ✅ CORRECTION : Traitement spécial pour les fichiers _empty.txt
+            filename = os.path.basename(translation_file_path)
             
             # Lire le fichier de traduction
             with open(translation_file_path, 'r', encoding='utf-8') as f:
                 translation_lines = f.readlines()
             
-            # Analyser le contenu
-            non_empty_lines = []
-            empty_lines = 0
-            
-            for i, line in enumerate(translation_lines):
-                content = line.rstrip('\n\r')
-                if content.strip():
-                    non_empty_lines.append((i + 1, content))
-                else:
-                    empty_lines += 1
-            
-            result['translation_count'] = len(non_empty_lines)
-            result['empty_lines'] = empty_lines
-            
-            # Vérifier la correspondance
-            if result['translation_count'] != extracted_count:
-                result['valid'] = False
+            # ✅ CORRECTION : Pour les fichiers _empty.txt, accepter les lignes vides
+            if filename.endswith('_empty.txt'):
+                log_message("INFO", f"Validation fichier _empty.txt: {filename}")
                 
-                if result['translation_count'] < extracted_count:
-                    result['missing_count'] = extracted_count - result['translation_count']
-                    result['errors'].append(
-                        f"Traductions manquantes: {result['missing_count']} "
-                        f"(attendu: {extracted_count}, trouvé: {result['translation_count']})"
-                    )
-                else:
-                    result['extra_count'] = result['translation_count'] - extracted_count
+                # Pour les fichiers empty, on compte toutes les lignes (même vides)
+                # car elles peuvent contenir des espaces ou être intentionnellement vides
+                total_lines = len(translation_lines)
+                
+                # Compter les lignes avec du contenu réel
+                content_lines = []
+                empty_lines = 0
+                
+                for i, line in enumerate(translation_lines):
+                    content = line.rstrip('\n\r')
+                    if content or content == '':  # Accepter les lignes vides pour _empty.txt
+                        content_lines.append((i + 1, content))
+                    else:
+                        empty_lines += 1
+                
+                result['translation_count'] = total_lines  # ✅ CORRECTION : Compter toutes les lignes
+                result['empty_lines'] = empty_lines
+                
+                # ✅ CORRECTION : Validation adaptée pour les fichiers _empty.txt
+                if result['translation_count'] != extracted_count:
+                    result['valid'] = False
+                    
+                    if result['translation_count'] < extracted_count:
+                        result['missing_count'] = extracted_count - result['translation_count']
+                        result['errors'].append(
+                            f"Lignes manquantes dans fichier _empty.txt: {result['missing_count']} "
+                            f"(attendu: {extracted_count}, trouvé: {result['translation_count']})"
+                        )
+                    else:
+                        result['extra_count'] = result['translation_count'] - extracted_count
+                        result['warnings'].append(
+                            f"Lignes supplémentaires dans fichier _empty.txt: {result['extra_count']} "
+                            f"(attendu: {extracted_count}, trouvé: {result['translation_count']})"
+                        )
+                
+                log_message("INFO", f"Validation _empty.txt: {result['translation_count']}/{extracted_count} lignes")
+                
+            else:
+                # Traitement normal pour les autres fichiers
+                non_empty_lines = []
+                empty_lines = 0
+                
+                for i, line in enumerate(translation_lines):
+                    content = line.rstrip('\n\r')
+                    if content.strip():
+                        non_empty_lines.append((i + 1, content))
+                    else:
+                        empty_lines += 1
+                
+                result['translation_count'] = len(non_empty_lines)
+                result['empty_lines'] = empty_lines
+                
+                # Vérifier la correspondance
+                if result['translation_count'] != extracted_count:
+                    result['valid'] = False
+                    
+                    if result['translation_count'] < extracted_count:
+                        result['missing_count'] = extracted_count - result['translation_count']
+                        result['errors'].append(
+                            f"Traductions manquantes: {result['missing_count']} "
+                            f"(attendu: {extracted_count}, trouvé: {result['translation_count']})"
+                        )
+                    else:
+                        result['extra_count'] = result['translation_count'] - extracted_count
+                        result['warnings'].append(
+                            f"Traductions supplémentaires: {result['extra_count']} "
+                            f"(attendu: {extracted_count}, trouvé: {result['translation_count']})"
+                        )
+                
+                # Vérifications de qualité pour les fichiers normaux
+                if empty_lines > 0:
+                    result['warnings'].append(f"{empty_lines} lignes vides détectées")
+                
+                # Détecter les placeholders non traduits
+                untranslated_count = 0
+                for line_num, content in non_empty_lines:
+                    if re.search(r'\(\d{2}\)', content):
+                        untranslated_count += 1
+                
+                if untranslated_count > 0:
                     result['warnings'].append(
-                        f"Traductions supplémentaires: {result['extra_count']} "
-                        f"(attendu: {extracted_count}, trouvé: {result['translation_count']})"
+                        f"{untranslated_count} lignes contiennent encore des placeholders non traduits"
                     )
             
-            # Vérifications de qualité
-            if empty_lines > 0:
-                result['warnings'].append(f"{empty_lines} lignes vides détectées")
+            # Le garder uniquement en cas d'erreur
+            if not result['valid']:
+                log_message("WARNING", f"Validation échouée: {result['translation_count']}/{extracted_count} lignes dans {translation_file_path}")
             
-            # Détecter les placeholders non traduits
-            untranslated_count = 0
-            for line_num, content in non_empty_lines:
-                if re.search(r'\(\d{2}\)', content):
-                    untranslated_count += 1
-            
-            if untranslated_count > 0:
-                result['warnings'].append(
-                    f"{untranslated_count} lignes contiennent encore des placeholders non traduits"
-                )
-            
-                # SUPPRESSION de ce log verbeux :
-                # log_message("INFO", f"Validation traduction: {result['translation_count']}/{extracted_count} lignes")
-                
-                # Le garder uniquement en cas d'erreur
-                if not result['valid']:
-                    log_message("WARNING", f"Validation échouée: {result['translation_count']}/{extracted_count} lignes dans {translation_file_path}")
-                
-                return result
+            return result
             
         except Exception as e:
             result['valid'] = False
@@ -371,11 +431,12 @@ class TranslationValidator:
         return result
     
     @staticmethod
-    def validate_all_files(file_base, extracted_count, asterix_count=0, empty_count=0):
+    def validate_all_files(game_name, file_base, extracted_count, asterix_count=0, empty_count=0):
         """
         Valide tous les fichiers de traduction d'un projet
         
         Args:
+            game_name (str): Nom du jeu
             file_base (str): Nom de base du projet
             extracted_count (int): Nombre de textes principaux extraits
             asterix_count (int): Nombre d'astérisques extraites
@@ -400,7 +461,7 @@ class TranslationValidator:
         
         try:
             # Valider le fichier principal
-            main_file = f"{file_base}.txt"
+            main_file = os.path.join(FOLDERS["temp"], game_name, "fichiers_a_traduire", f"{file_base}.txt")
             if os.path.exists(main_file):
                 validation_results['main_file'] = TranslationValidator.validate_file_correspondence(
                     extracted_count, main_file
@@ -422,7 +483,7 @@ class TranslationValidator:
             
             # Valider le fichier astérisques si nécessaire
             if asterix_count > 0:
-                asterix_file = f"{file_base}_asterix.txt"
+                asterix_file = os.path.join(FOLDERS["temp"], game_name, "fichiers_a_traduire", f"{file_base}_asterix.txt")
                 if os.path.exists(asterix_file):
                     validation_results['asterix_file'] = TranslationValidator.validate_file_correspondence(
                         asterix_count, asterix_file
@@ -443,9 +504,9 @@ class TranslationValidator:
                     validation_results['overall_valid'] = False
                     validation_results['summary']['validation_success'] = False
             
-            # Valider le fichier textes vides si nécessaire
+            # ✅ CORRECTION : Valider le fichier textes vides si nécessaire
             if empty_count > 0:
-                empty_file = f"{file_base}_empty.txt"
+                empty_file = os.path.join(FOLDERS["temp"], game_name, "fichiers_a_traduire", f"{file_base}_empty.txt")
                 if os.path.exists(empty_file):
                     validation_results['empty_file'] = TranslationValidator.validate_file_correspondence(
                         empty_count, empty_file
@@ -482,7 +543,107 @@ class TranslationValidator:
         
         return validation_results
 
-# Fonctions utilitaires
+    def validate_all_files_with_paths(self, main_file_path, asterix_file_path, empty_file_path,
+                                     extracted_count, asterix_count=0, empty_count=0):
+        """Valide tous les fichiers avec chemins complets spécifiés"""
+        validation_results = {
+            'overall_valid': True,
+            'main_file': None,
+            'asterix_file': None,
+            'empty_file': None,
+            'summary': {
+                'total_expected': extracted_count + asterix_count + empty_count,
+                'total_found': 0,
+                'files_validated': 0,
+                'validation_success': True
+            }
+        }
+        
+        try:
+            # Valider le fichier principal
+            if main_file_path and os.path.exists(main_file_path):
+                validation_results['main_file'] = self.validate_file_correspondence(
+                    extracted_count, main_file_path
+                )
+                validation_results['summary']['files_validated'] += 1
+                validation_results['summary']['total_found'] += validation_results['main_file']['translation_count']
+                
+                if not validation_results['main_file']['valid']:
+                    validation_results['overall_valid'] = False
+                    validation_results['summary']['validation_success'] = False
+            else:
+                validation_results['overall_valid'] = False
+                validation_results['summary']['validation_success'] = False
+                validation_results['main_file'] = {
+                    'valid': False,
+                    'translation_count': 0,
+                    'errors': [f"Fichier principal manquant: {main_file_path}"]
+                }
+            
+            # Valider le fichier astérisques si nécessaire
+            if asterix_count > 0:
+                if asterix_file_path and os.path.exists(asterix_file_path):
+                    validation_results['asterix_file'] = self.validate_file_correspondence(
+                        asterix_count, asterix_file_path
+                    )
+                    validation_results['summary']['files_validated'] += 1
+                    validation_results['summary']['total_found'] += validation_results['asterix_file']['translation_count']
+                    
+                    if not validation_results['asterix_file']['valid']:
+                        validation_results['overall_valid'] = False
+                        validation_results['summary']['validation_success'] = False
+                else:
+                    # Fichier astérisques attendu mais manquant
+                    validation_results['asterix_file'] = {
+                        'valid': False,
+                        'translation_count': 0,
+                        'errors': [f"Fichier astérisques manquant: {asterix_file_path}"]
+                    }
+                    validation_results['overall_valid'] = False
+                    validation_results['summary']['validation_success'] = False
+            
+            # ✅ CORRECTION : Valider le fichier textes vides si nécessaire
+            if empty_count > 0:
+                if empty_file_path and os.path.exists(empty_file_path):
+                    validation_results['empty_file'] = self.validate_file_correspondence(
+                        empty_count, empty_file_path
+                    )
+                    validation_results['summary']['files_validated'] += 1
+                    validation_results['summary']['total_found'] += validation_results['empty_file']['translation_count']
+                    
+                    if not validation_results['empty_file']['valid']:
+                        validation_results['overall_valid'] = False
+                        validation_results['summary']['validation_success'] = False
+                else:
+                    # Fichier vides attendu mais manquant
+                    validation_results['empty_file'] = {
+                        'valid': False,
+                        'translation_count': 0,
+                        'errors': [f"Fichier textes vides manquant: {empty_file_path}"]
+                    }
+                    validation_results['overall_valid'] = False
+                    validation_results['summary']['validation_success'] = False
+            
+            # Log du résultat final
+            log_message("INFO", f"Validation complète: {validation_results['summary']['total_found']}/{validation_results['summary']['total_expected']} éléments validés")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lors de la validation des fichiers", e)
+            validation_results['overall_valid'] = False
+            validation_results['summary']['validation_success'] = False
+            if not validation_results.get('main_file'):
+                validation_results['main_file'] = {
+                    'valid': False,
+                    'translation_count': 0,
+                    'errors': [f"Erreur de validation: {str(e)}"]
+                }
+        
+        return validation_results
+
+
+# ===== FONCTIONS UTILITAIRES AU NIVEAU RACINE =====
+# Ces fonctions sont maintenant accessibles pour l'import direct
+
 def validate_before_extraction(filepath):
     """
     Validation complète avant extraction
@@ -521,6 +682,7 @@ def validate_before_extraction(filepath):
             'errors': [f"Erreur de validation: {str(e)}"]
         }
 
+
 def create_safety_backup(filepath):
     """
     Crée une sauvegarde de sécurité avant traitement
@@ -542,22 +704,41 @@ def create_safety_backup(filepath):
             'error': str(e)
         }
 
+
 def validate_before_reconstruction(file_base, extracted_count, asterix_count=0, empty_count=0):
-    """
-    Validation complète avant reconstruction
-    
-    Args:
-        file_base (str): Nom de base du projet
-        extracted_count (int): Nombre de textes extraits
-        asterix_count (int): Nombre d'astérisques
-        empty_count (int): Nombre de textes vides
-        
-    Returns:
-        dict: Résultat de la validation
-    """
+    """✅ CORRECTION : Validation avec nouvelle structure de fichiers"""
     try:
+        # ✅ CORRECTION : Utiliser la structure organisée
+        from utils.logging import extract_game_name
+        from utils.constants import FOLDERS
+        
+        # Récupérer le nom du jeu depuis le contexte ou utiliser un fallback
+        game_name = "Projet_Inconnu"  # Fallback
+        
+        # Essayer de récupérer le nom du jeu depuis le contexte global
+        try:
+            # Si on a accès à l'instance principale
+            import main
+            if hasattr(main, 'app') and hasattr(main.app, 'original_path'):
+                game_name = extract_game_name(main.app.original_path)
+        except:
+            pass
+        
+        temp_root = FOLDERS["temp"]
+        translate_folder = os.path.join(temp_root, game_name, "fichiers_a_traduire")
+        
         validator = TranslationValidator()
-        return validator.validate_all_files(file_base, extracted_count, asterix_count, empty_count)
+        
+        # Adapter les chemins pour la nouvelle structure
+        main_file = os.path.join(translate_folder, f"{file_base}.txt")
+        asterix_file = os.path.join(translate_folder, f"{file_base}_asterix.txt") if asterix_count > 0 else None
+        empty_file = os.path.join(translate_folder, f"{file_base}_empty.txt") if empty_count > 0 else None
+        
+        return validator.validate_all_files_with_paths(
+            main_file, asterix_file, empty_file,
+            extracted_count, asterix_count, empty_count
+        )
+        
     except Exception as e:
         log_message("ERREUR", f"Erreur lors de la validation avant reconstruction pour {file_base}", e)
         return {

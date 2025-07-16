@@ -1,6 +1,6 @@
 # core/extraction.py
 # Extraction Functions Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module d'extraction des textes depuis les fichiers Ren'Py
@@ -14,19 +14,7 @@ from collections import OrderedDict
 from utils.constants import SPECIAL_CODES, PROTECTION_ORDER
 from utils.logging import log_message, anonymize_path
 
-def extract_game_name(path: str) -> str:
-    """
-    Extrait le nom du jeu à partir du chemin complet du fichier.
-    Ex : ".../temporaires/MonJeu/fichiers_a_traduire/scene.rpy" → "MonJeu"
-    """
-    parts = os.path.normpath(path).split(os.sep)
-    try:
-        # on suppose que <game_name> est deux dossiers au-dessus du fichier
-        return parts[-3]
-    except IndexError:
-        raise ValueError(f"Impossible d'extraire le nom du jeu depuis : {path}")
-
-
+# Fonction extract_game_name déplacée vers utils/logging.py pour éviter la duplication
 def get_file_base_name(filepath):
     """
     Récupère le nom de base du fichier sans extension pour créer des fichiers uniques
@@ -376,7 +364,6 @@ class TextExtractor:
                 temp_folder,
                 os.path.join(temp_folder, "fichiers_a_traduire"),
                 os.path.join(temp_folder, "fichiers_a_ne_pas_traduire"),
-                os.path.join(temp_folder, "fichiers_d_avertissement")
             ]
             
             for folder in folders_to_create:
@@ -465,10 +452,10 @@ def extraire_textes(file_content, original_path):
     create_safety_backup(original_path)
 
     # 2) (Optionnel) Préparer le dossier temporaire
-    from core.file_manager import TempFileManager
-    TempFileManager().ensure_temp_dir_for(original_path)
+    # from core.file_manager import TempFileManager
+    # TempFileManager().ensure_temp_dir_for(original_path)  # Method not implemented
 
-    # 3) Lancer l’extraction
+    # 3) Lancer l'extraction
     extractor = TextExtractor()
     extractor.load_file_content(file_content, original_path)
     return extractor.extract_texts()

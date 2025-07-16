@@ -1,6 +1,6 @@
 # ui/backup_manager.py
 # Backup Management Interface
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module d'interface pour la gestion des sauvegardes
@@ -11,7 +11,8 @@ from tkinter import ttk, messagebox
 import os
 import datetime
 from core.validation import BackupManager
-from utils.logging import log_message
+from utils.logging import log_message, extract_game_name
+from utils.constants import FOLDERS
 from ui.themes import theme_manager
 
 class BackupDialog:
@@ -63,16 +64,18 @@ class BackupDialog:
         title_label = tk.Label(
             header_frame,
             text=f"🛡️ Sauvegardes de {os.path.basename(self.filepath)}",
-            font=('Segoe UI', 14, 'bold'),
+            font=('Segoe UI Emoji', 14, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
         )
         title_label.pack()
         
+        # ✅ CORRECTION : Afficher le jeu détecté
+        game_name = extract_game_name(self.filepath)
         info_label = tk.Label(
             header_frame,
-            text="Les sauvegardes sont créées automatiquement avant chaque traitement",
-            font=('Segoe UI', 9),
+            text=f"Jeu: {game_name} | Sauvegardes automatiques avant chaque traitement",
+            font=('Segoe UI Emoji', 9),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -102,7 +105,7 @@ class BackupDialog:
         self.no_backup_label = tk.Label(
             self.scrollable_frame,
             text="🔍 Recherche des sauvegardes...",
-            font=('Segoe UI', 11),
+            font=('Segoe UI Emoji', 11),
             bg=theme["frame_bg"],
             fg=theme["fg"]
         )
@@ -116,7 +119,7 @@ class BackupDialog:
         refresh_btn = tk.Button(
             button_frame,
             text="🔄 Actualiser",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["accent"],
             fg=theme["button_fg"],
             activebackground='#157347',
@@ -131,7 +134,7 @@ class BackupDialog:
         close_btn = tk.Button(
             button_frame,
             text="❌ Fermer",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["danger"],
             fg=theme["button_fg"],
             activebackground='#b02a37',
@@ -149,13 +152,71 @@ class BackupDialog:
         self.dialog.bind("<MouseWheel>", on_mousewheel)
     
     def _load_backups(self):
-        """Charge la liste des sauvegardes"""
+        """✅ CORRECTION : Charge la liste des sauvegardes depuis le nouveau système"""
         try:
-            self.backups = self.backup_manager.list_backups(self.filepath)
+            self.backups = self._list_backups_new_system()
             self._update_backup_list()
         except Exception as e:
             log_message("ERREUR", f"Erreur lors du chargement des sauvegardes pour {self.filepath}", e)
             messagebox.showerror("❌ Erreur", f"Impossible de charger les sauvegardes:\n{str(e)}")
+    
+    def _list_backups_new_system(self):
+        """
+        ✅ CORRECTION : Liste les sauvegardes depuis la nouvelle structure organisée
+        
+        Returns:
+            list: Liste des sauvegardes avec métadonnées
+        """
+        backups = []
+        
+        try:
+            # Obtenir le nom du jeu et le dossier de sauvegarde
+            game_name = extract_game_name(self.filepath)
+            backup_folder = os.path.join(FOLDERS["backup"], game_name)
+            
+            log_message("INFO", f"Recherche des sauvegardes dans: {backup_folder}")
+            
+            # Vérifier que le dossier existe
+            if not os.path.exists(backup_folder):
+                log_message("INFO", f"Dossier de sauvegarde non trouvé: {backup_folder}")
+                return backups
+            
+            # Obtenir le nom de base du fichier pour filtrer les sauvegardes
+            base_name = os.path.splitext(os.path.basename(self.filepath))[0]
+            
+            # Lister tous les fichiers dans le dossier de sauvegarde
+            for filename in os.listdir(backup_folder):
+                file_path = os.path.join(backup_folder, filename)
+                
+                # Filtrer les fichiers qui correspondent au fichier actuel
+                if (filename.startswith(base_name) and 
+                    ('backup' in filename.lower() or 'safety' in filename.lower()) and
+                    os.path.isfile(file_path)):
+                    
+                    try:
+                        stats = os.stat(file_path)
+                        backups.append({
+                            'path': file_path,
+                            'name': filename,
+                            'size': stats.st_size,
+                            'created': datetime.datetime.fromtimestamp(stats.st_ctime),
+                            'modified': datetime.datetime.fromtimestamp(stats.st_mtime),
+                            'game': game_name
+                        })
+                        log_message("INFO", f"Sauvegarde trouvée: {filename}")
+                    except Exception as e:
+                        log_message("WARNING", f"Impossible de lire les stats de {filename}", e)
+                        continue
+            
+            # Trier par date de création (plus récent en premier)
+            backups.sort(key=lambda x: x['created'], reverse=True)
+            
+            log_message("INFO", f"Total des sauvegardes trouvées: {len(backups)}")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lors de la recherche des sauvegardes pour {self.filepath}", e)
+        
+        return backups
     
     def _refresh_backups(self):
         """Actualise la liste des sauvegardes"""
@@ -168,7 +229,7 @@ class BackupDialog:
         loading_label = tk.Label(
             self.scrollable_frame,
             text="🔄 Actualisation...",
-            font=('Segoe UI', 11),
+            font=('Segoe UI Emoji', 11),
             bg=theme["frame_bg"],
             fg=theme["fg"]
         )
@@ -189,10 +250,14 @@ class BackupDialog:
         
         if not self.backups:
             # Aucune sauvegarde trouvée
+            game_name = extract_game_name(self.filepath)
             no_backup_label = tk.Label(
                 self.scrollable_frame,
-                text="📭 Aucune sauvegarde trouvée\n\nLes sauvegardes seront créées automatiquement\nlors de la prochaine extraction",
-                font=('Segoe UI', 11),
+                text=f"📭 Aucune sauvegarde trouvée pour ce fichier\n\n"
+                     f"🎮 Jeu: {game_name}\n"
+                     f"📁 Dossier: sauvegardes/{game_name}/\n\n"
+                     f"Les sauvegardes seront créées automatiquement\nlors de la prochaine extraction",
+                font=('Segoe UI Emoji', 11),
                 bg=theme["frame_bg"],
                 fg=theme["fg"],
                 justify='center'
@@ -223,10 +288,13 @@ class BackupDialog:
         name_frame = tk.Frame(info_frame, bg=theme["bg"])
         name_frame.pack(fill='x')
         
+        # Icône selon le type de sauvegarde
+        icon = "🛡️" if "safety" in backup['name'].lower() else "📅"
+        
         icon_label = tk.Label(
             name_frame,
-            text="📅",
-            font=('Segoe UI', 12),
+            text=icon,
+            font=('Segoe UI Emoji', 12),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -235,7 +303,7 @@ class BackupDialog:
         name_label = tk.Label(
             name_frame,
             text=backup['name'],
-            font=('Segoe UI', 11, 'bold'),
+            font=('Segoe UI Emoji', 11, 'bold'),
             bg=theme["bg"],
             fg=theme["accent"]
         )
@@ -250,7 +318,7 @@ class BackupDialog:
         created_label = tk.Label(
             details_frame,
             text=f"📅 Créée: {created_str}",
-            font=('Segoe UI', 9),
+            font=('Segoe UI Emoji', 9),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -261,11 +329,21 @@ class BackupDialog:
         size_label = tk.Label(
             details_frame,
             text=f"📦 Taille: {size_mb:.2f} MB",
-            font=('Segoe UI', 9),
+            font=('Segoe UI Emoji', 9),
             bg=theme["bg"],
             fg=theme["fg"]
         )
         size_label.pack(anchor='w')
+        
+        # Jeu associé
+        game_label = tk.Label(
+            details_frame,
+            text=f"🎮 Jeu: {backup['game']}",
+            font=('Segoe UI Emoji', 9),
+            bg=theme["bg"],
+            fg=theme["fg"]
+        )
+        game_label.pack(anchor='w')
         
         # Ancienneté
         age = datetime.datetime.now() - backup['created']
@@ -279,7 +357,7 @@ class BackupDialog:
         age_label = tk.Label(
             details_frame,
             text=f"⏰ Il y a: {age_str}",
-            font=('Segoe UI', 9),
+            font=('Segoe UI Emoji', 9),
             bg=theme["bg"],
             fg=theme["fg"]
         )
@@ -293,7 +371,7 @@ class BackupDialog:
         restore_btn = tk.Button(
             action_frame,
             text="🔄 Restaurer",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["accent"],
             fg=theme["button_fg"],
             activebackground='#157347',
@@ -308,7 +386,7 @@ class BackupDialog:
         delete_btn = tk.Button(
             action_frame,
             text="🗑️ Supprimer",
-            font=('Segoe UI', 10),
+            font=('Segoe UI Emoji', 10),
             bg=theme["danger"],
             fg=theme["button_fg"],
             activebackground='#b02a37',
@@ -324,13 +402,26 @@ class BackupDialog:
             recent_badge = tk.Label(
                 action_frame,
                 text="🌟 Plus récent",
-                font=('Segoe UI', 9, 'bold'),
+                font=('Segoe UI Emoji', 9, 'bold'),
                 bg=theme["warning"],
                 fg='#000000',
                 padx=8,
                 pady=2
             )
             recent_badge.pack(side='right')
+        
+        # Badge type de sauvegarde
+        if "safety" in backup['name'].lower():
+            safety_badge = tk.Label(
+                action_frame,
+                text="🛡️ Sécurité",
+                font=('Segoe UI Emoji', 9, 'bold'),
+                bg=theme["accent"],
+                fg=theme["button_fg"],
+                padx=8,
+                pady=2
+            )
+            safety_badge.pack(side='right', padx=(0, 10))
     
     def _restore_backup(self, backup):
         """Restaure une sauvegarde avec gestion complète des erreurs"""
@@ -340,6 +431,7 @@ class BackupDialog:
                 "🔄 Confirmer la restauration",
                 f"Voulez-vous vraiment restaurer cette sauvegarde ?\n\n"
                 f"📅 {backup['name']}\n"
+                f"🎮 Jeu: {backup['game']}\n"
                 f"🕒 Créée: {backup['created'].strftime('%d/%m/%Y à %H:%M:%S')}\n\n"
                 f"⚠️ ATTENTION: Le fichier actuel sera remplacé !"
             )
@@ -356,6 +448,7 @@ class BackupDialog:
                     "✅ Restauration réussie",
                     f"La sauvegarde a été restaurée avec succès !\n\n"
                     f"📁 Fichier: {os.path.basename(self.filepath)}\n"
+                    f"🎮 Jeu: {backup['game']}\n"
                     f"📅 Sauvegarde: {backup['created'].strftime('%d/%m/%Y à %H:%M:%S')}\n\n"
                     f"❓ Voulez-vous supprimer cette sauvegarde maintenant qu'elle a été utilisée ?"
                 )
@@ -376,52 +469,17 @@ class BackupDialog:
                         
                         log_message("INFO", f"Sauvegarde supprimée après restauration: {backup['name']}")
                         
-                    except PermissionError:
-                        # Erreur de permission
-                        log_message("ERREUR", f"Permission refusée pour supprimer {backup['path']}")
-                        messagebox.showerror(
-                            "❌ Erreur de permission",
-                            f"Impossible de supprimer la sauvegarde :\n\n"
-                            f"📅 {backup['name']}\n\n"
-                            f"💡 Le fichier est peut-être utilisé par un autre programme.\n"
-                            f"Vous pouvez le supprimer manuellement si nécessaire."
-                        )
-                        
-                    except FileNotFoundError:
-                        # Fichier déjà supprimé
-                        log_message("WARNING", f"Fichier de sauvegarde déjà supprimé: {backup['path']}")
-                        messagebox.showwarning(
-                            "⚠️ Fichier introuvable",
-                            f"La sauvegarde semble déjà avoir été supprimée :\n📅 {backup['name']}"
-                        )
-                        # Actualiser quand même la liste
-                        self._refresh_backups()
-                        
-                    except OSError as os_error:
-                        # Autres erreurs système
-                        log_message("ERREUR", f"Erreur système lors de la suppression de {backup['path']}", os_error)
-                        messagebox.showerror(
-                            "❌ Erreur système",
-                            f"Erreur lors de la suppression de la sauvegarde :\n\n"
-                            f"📅 {backup['name']}\n"
-                            f"🔧 Erreur: {str(os_error)}\n\n"
-                            f"💡 Vous pouvez essayer de supprimer le fichier manuellement."
-                        )
-                        
                     except Exception as delete_error:
-                        # Toute autre erreur inattendue
-                        log_message("ERREUR", f"Erreur inattendue lors de la suppression de {backup['path']}", delete_error)
+                        log_message("ERREUR", f"Erreur lors de la suppression de {backup['path']}", delete_error)
                         messagebox.showerror(
-                            "❌ Erreur inattendue",
-                            f"Une erreur inattendue s'est produite :\n\n"
+                            "❌ Erreur de suppression",
+                            f"Impossible de supprimer la sauvegarde :\n\n"
                             f"📅 {backup['name']}\n"
                             f"🔧 Erreur: {str(delete_error)}\n\n"
-                            f"💡 La restauration a réussi, mais la suppression a échoué.\n"
-                            f"Vous pouvez supprimer manuellement le fichier si souhaité."
+                            f"💡 La restauration a réussi, mais vous devrez supprimer manuellement le fichier si souhaité."
                         )
                 
                 # Fermer le dialogue et notifier le parent de recharger le fichier
-                # (même si la suppression a échoué, la restauration a réussi)
                 self.dialog.destroy()
                 
                 # Notifier le parent de recharger le fichier (si possible)
@@ -431,7 +489,6 @@ class BackupDialog:
                         log_message("INFO", f"Fichier rechargé après restauration: {os.path.basename(self.filepath)}")
                     except Exception as reload_error:
                         log_message("WARNING", f"Impossible de recharger le fichier après restauration", reload_error)
-                        # Ne pas afficher d'erreur à l'utilisateur car la restauration a réussi
                 
             else:
                 # Erreur lors de la restauration
@@ -446,7 +503,6 @@ class BackupDialog:
                 )
                 
         except Exception as e:
-            # Erreur générale (problème avec l'interface, etc.)
             log_message("ERREUR", f"Erreur générale lors de la restauration de {backup.get('name', 'sauvegarde inconnue')}", e)
             messagebox.showerror(
                 "❌ Erreur critique",
@@ -463,6 +519,7 @@ class BackupDialog:
                 "🗑️ Confirmer la suppression",
                 f"Voulez-vous vraiment supprimer cette sauvegarde ?\n\n"
                 f"📅 {backup['name']}\n"
+                f"🎮 Jeu: {backup['game']}\n"
                 f"🕒 Créée: {backup['created'].strftime('%d/%m/%Y à %H:%M:%S')}\n"
                 f"📦 Taille: {backup['size'] / (1024 * 1024):.2f} MB\n\n"
                 f"⚠️ Cette action est irréversible !"

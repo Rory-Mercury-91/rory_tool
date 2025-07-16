@@ -1,6 +1,6 @@
-# utils/constants.py - THÈMES CORRIGÉS
+# utils/constants.py - STRUCTURE CORRIGÉE
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v2.0.0
+# Created for Traducteur Ren'Py Pro v2.2.0
 
 """
 Module contenant toutes les constantes de l'application
@@ -9,14 +9,14 @@ Module contenant toutes les constantes de l'application
 import os
 
 # Version de l'application
-VERSION = "1.8.0"
+VERSION = "2.2.0"
 
-# Dossiers d'organisation
+# ✅ CORRECTION : Dossier config renommé
 FOLDERS = {
     "temp": "temporaires",
     "backup": "sauvegardes",
     "warnings": "avertissements",
-    "logs": "logs"
+    "configs": "dossier_configs"  # ✅ NOUVEAU : Renommé de "logs" à "dossier_configs"
 }
 
 # ✅ THÈMES COMPLÈTEMENT DIFFÉRENTS VISUELLEMENT
@@ -57,7 +57,7 @@ THEMES = {
 WINDOW_CONFIG = {
     "title": f"🎮 Traducteur Ren'Py Pro v{VERSION}",
     "geometry": "1100x700",
-    "min_size": (900, 600)
+    "min_size": (1300, 800)
 }
 
 # Codes spéciaux Ren'Py à protéger
@@ -112,11 +112,11 @@ DEFAULT_CONFIG = {
     "version": VERSION
 }
 
-# Noms de fichiers avec chemins organisés
+# ✅ CORRECTION : Fichiers dans dossier_configs
 FILE_NAMES = {
-    "config": "config.json",
-    "log": os.path.join(FOLDERS["logs"], "log.txt"),
-    "tutorial_flag": "tutorial_shown.flag"
+    "config": os.path.join(FOLDERS["configs"], "config.json"),
+    "log": os.path.join(FOLDERS["configs"], "log.txt"),
+    "tutorial_flag": os.path.join(FOLDERS["configs"], "tutorial_shown.flag")
 }
 
 # Fonction utilitaire pour créer les dossiers
@@ -128,3 +128,48 @@ def ensure_folders_exist():
                 os.makedirs(folder_path, exist_ok=True)
         except Exception:
             pass  # Échec silencieux
+
+def ensure_game_structure(game_name):
+    """Crée la structure complète pour un jeu spécifique"""
+    try:
+        base_folders = [
+            os.path.join(FOLDERS["temp"], game_name),
+            os.path.join(FOLDERS["temp"], game_name, "fichiers_a_traduire"),
+            os.path.join(FOLDERS["temp"], game_name, "fichiers_a_ne_pas_traduire"),
+            os.path.join(FOLDERS["backup"], game_name),
+            os.path.join(FOLDERS["warnings"], game_name)
+        ]
+        
+        for folder in base_folders:
+            os.makedirs(folder, exist_ok=True)
+            
+        return True
+    except Exception:
+        return False
+
+def ensure_complete_structure():
+    """Crée la structure complète organisée"""
+    try:
+        from utils.constants import FOLDERS
+        
+        # Structure de base
+        base_structure = [
+            FOLDERS["temp"],
+            FOLDERS["backup"], 
+            FOLDERS["warnings"],
+            FOLDERS["configs"]  # ✅ CORRECTION : Utiliser configs au lieu de logs
+        ]
+        
+        for folder in base_structure:
+            os.makedirs(folder, exist_ok=True)
+        
+        print("✅ Structure de base créée:")
+        print(f"📁 {FOLDERS['temp']}/")
+        print(f"📁 {FOLDERS['backup']}/") 
+        print(f"📁 {FOLDERS['warnings']}/")
+        print(f"📁 {FOLDERS['configs']}/")  # ✅ CORRECTION
+        
+        return True
+    except Exception as e:
+        print(f"❌ Erreur création structure: {e}")
+        return False
