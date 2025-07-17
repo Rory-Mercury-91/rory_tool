@@ -1,6 +1,6 @@
 # core/validation.py
 # Validation and Security Module
-# Created for Traducteur Ren'Py Pro v2.4.2
+# Created for Traducteur Ren'Py Pro v2.4.4
 
 """
 Module de validation des fichiers et de sécurité

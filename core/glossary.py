@@ -1,6 +1,6 @@
 # core/glossary.py
 # Glossary Management System
-# Created for Traducteur Ren'Py Pro v2.4.2
+# Created for Traducteur Ren'Py Pro v2.4.4
 
 """
 Système de gestion du glossaire pour la traduction automatique

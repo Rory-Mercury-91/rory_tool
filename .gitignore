@@ -8,4 +8,4 @@ test_*.txt
 *.flag
 *.txt
 *.spec
-*.env
+*.envtemp_venv/

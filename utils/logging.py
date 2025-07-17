@@ -1,6 +1,6 @@
 # utils/logging.py
 # Logging System Module
-# Created for Traducteur Ren'Py Pro v2.4.2
+# Created for Traducteur Ren'Py Pro v2.4.4
 
 """
 Module de gestion des logs

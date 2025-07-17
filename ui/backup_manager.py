@@ -1,6 +1,6 @@
 # ui/backup_manager.py
 # Backup Management Interface
-# Created for Traducteur Ren'Py Pro v2.4.2
+# Created for Traducteur Ren'Py Pro v2.4.4
 
 """
 Module d'interface pour la gestion des sauvegardes
