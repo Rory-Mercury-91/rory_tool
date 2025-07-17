@@ -1,6 +1,6 @@
 # ui/glossary_ui.py
 # Glossary User Interface
-# Created for Traducteur Ren'Py Pro v2.4.0
+# Created for Traducteur Ren'Py Pro v2.4.1
 
 """
 Interface utilisateur pour la gestion du glossaire

@@ -1,6 +1,6 @@
 # core/reconstruction_enhanced.py
 # Enhanced Reconstruction with Glossary Support
-# Created for Traducteur Ren'Py Pro v2.4.0
+# Created for Traducteur Ren'Py Pro v2.4.1
 
 """
 Reconstruction améliorée avec support du glossaire

@@ -1,6 +1,6 @@
 # ui/interface.py
 # Main Interface Components
-# Created for Traducteur Ren'Py Pro v2.4.0
+# Created for Traducteur Ren'Py Pro v2.4.1
 
 """
 Module des composants d'interface utilisateur
@@ -327,7 +327,7 @@ Développé pour la traduction de scripts Ren'Py
 • Interface moderne avec thèmes
 • Sauvegarde automatique de sécurité
 
-🎯 Nouveautés v2.4.0:
+🎯 Nouveautés v2.4.1:
 • Architecture refactorisée
 • Validation avancée des fichiers Ren'Py
 • Contrôle de l'ouverture automatique

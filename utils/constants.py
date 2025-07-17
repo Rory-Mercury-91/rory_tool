@@ -1,6 +1,6 @@
 # utils/constants.py - STRUCTURE CORRIGÉE
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v2.4.0
+# Created for Traducteur Ren'Py Pro v2.4.1
 
 """
 Module contenant toutes les constantes de l'application
@@ -9,7 +9,7 @@ Module contenant toutes les constantes de l'application
 import os
 
 # Version de l'application
-VERSION = "2.4.0"
+VERSION = "2.4.1"
 
 # ✅ CORRECTION : Dossier config renommé
 FOLDERS = {

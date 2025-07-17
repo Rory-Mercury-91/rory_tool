@@ -1,6 +1,6 @@
 # ui/tutorial.py
 # Enhanced Non-blocking Tutorial System - UPDATED
-# Created for Traducteur Ren'Py Pro v2.4.0
+# Created for Traducteur Ren'Py Pro v2.4.1
 
 """
 Système de tutoriel amélioré aligné avec les fonctionnalités actuelles
@@ -122,7 +122,7 @@ def show_tutorial():
     
     # Section 1: Vue d'ensemble
     create_section(scrollable_frame, theme, "🎯 Vue d'ensemble", [
-        "Le Traducteur Ren'Py Pro v2.4.0 est un outil spécialisé pour les traductions de jeux Ren'Py.",
+        "Le Traducteur Ren'Py Pro v2.4.1 est un outil spécialisé pour les traductions de jeux Ren'Py.",
         "Architecture modulaire avec extraction intelligente, protection des codes et reconstruction précise.",
         "Compatible avec les fichiers générés par le SDK Ren'Py (commande generate translations).",
         "Support : fichiers uniques, mode dossier, Drag & Drop, Ctrl+V, et système de glossaire permanent."
@@ -141,8 +141,8 @@ def show_tutorial():
         "💡 La validation automatique vérifie la cohérence OLD/NEW"
     ])
     
-    # Section 3: Nouveautés v2.4.0
-    create_section(scrollable_frame, theme, "🆕 Nouveautés v2.4.0", [
+    # Section 3: Nouveautés v2.4.1
+    create_section(scrollable_frame, theme, "🆕 Nouveautés v2.4.1", [
         "📚 Système de Glossaire permanent :",
         "   • Traduction automatique des termes récurrents (ex: 'Sigh' → 'Soupir')",
         "   • Interface complète : ajout, modification, suppression, recherche",
@@ -427,7 +427,7 @@ def show_tutorial():
     
     tutorial_window.protocol("WM_DELETE_WINDOW", on_closing)
     
-    log_message("INFO", "Tutoriel v2.4.0 affiché (non-bloquant)")
+    log_message("INFO", "Tutoriel v2.4.1 affiché (non-bloquant)")
 
 def create_section(parent, theme, title, items):
     """
@@ -576,7 +576,7 @@ def show_quick_help(parent, topic=None):
         },
         'files': {
             'title': "📁 Organisation fichiers",
-            'subtitle': "Structure organisée par jeu v2.4.0",
+            'subtitle': "Structure organisée par jeu v2.4.1",
             'sections': [
                 ("📂 Arborescence", [
                     "dossier_configs : Fichiers principaux de l’outil",
@@ -753,7 +753,7 @@ def show_minimal_tutorial():
     ])
     
     # Section Nouveautés
-    create_section(scrollable_frame, theme, "🆕 Nouveautés v2.4.0", [
+    create_section(scrollable_frame, theme, "🆕 Nouveautés v2.4.1", [
         "📚 Glossaire permanent pour termes récurrents",
         "🏗️ Architecture organisée par jeu (temporaires/[NomDuJeu]/)",
         "✅ Validation avancée avec rapports détaillés",
@@ -776,7 +776,7 @@ def show_minimal_tutorial():
     ])
     
     # Section Important
-    create_section(scrollable_frame, theme, "⚠️ Important v2.4.0", [
+    create_section(scrollable_frame, theme, "⚠️ Important v2.4.1", [
         "Structure organisée : temporaires/[NomDuJeu]/fichiers_a_traduire/",
         "Ne jamais modifier les codes (01), (02), (GLO001)...",
         "Fichiers _empty.txt peuvent contenir lignes vides",
@@ -816,7 +816,7 @@ def show_minimal_tutorial():
     btn_close.focus_set()
     tutorial_window.protocol("WM_DELETE_WINDOW", tutorial_window.destroy)
     
-    log_message("INFO", "Guide Express v2.4.0 affiché avec style harmonisé")
+    log_message("INFO", "Guide Express v2.4.1 affiché avec style harmonisé")
 
 def show_whats_new():
     """Affiche les nouveautés avec le MÊME STYLE que le guide complet"""
@@ -903,7 +903,7 @@ def show_whats_new():
     ])
     
     # Section Interface
-    create_section(scrollable_frame, theme, "🎨 Interface v2.4.0", [
+    create_section(scrollable_frame, theme, "🎨 Interface v2.4.1", [
         "🌈 Thèmes sombre/clair vraiment différents",
         "🎯 Modes d'entrée D&D ↔ Ctrl+V avec fallback intelligent",
         "📊 Statistiques temps réel et compteurs",
@@ -919,7 +919,7 @@ def show_whats_new():
     ])
     
     # Section Utilisation
-    create_section(scrollable_frame, theme, "💡 Utilisation optimale v2.4.0", [
+    create_section(scrollable_frame, theme, "💡 Utilisation optimale v2.4.1", [
         "Configurez d'abord votre glossaire avec termes fréquents",
         "Utilisez structure organisée pour multi-projets",
         "Consultez rapports validation pour qualité traduction",
@@ -959,13 +959,13 @@ def show_whats_new():
     btn_close.focus_set()
     tutorial_window.protocol("WM_DELETE_WINDOW", tutorial_window.destroy)
     
-    log_message("INFO", "Nouveautés v2.4.0 affichées avec style harmonisé")
+    log_message("INFO", "Nouveautés v2.4.1 affichées avec style harmonisé")
 
 def create_tutorial_menu():
     """Crée un menu contextuel pour différents types d'aide"""
     def show_menu():
         menu_window = tk.Toplevel()
-        menu_window.title("🎓 Centre d'aide v2.4.0")
+        menu_window.title("🎓 Centre d'aide v2.4.1")
         menu_window.geometry("500x800")
         
         # Centrer la fenêtre
@@ -993,14 +993,14 @@ def create_tutorial_menu():
         button_frame.pack(fill='both', expand=True, padx=20)
         
         buttons = [
-            ("📖 Guide complet v2.4.0", "Guide détaillé avec toutes les fonctionnalités actuelles", show_tutorial),
+            ("📖 Guide complet v2.4.1", "Guide détaillé avec toutes les fonctionnalités actuelles", show_tutorial),
             ("⚡ Guide express", "Version rapide pour utilisateurs expérimentés", show_minimal_tutorial),
-            ("🆕 Nouveautés v2.4.0", "Découvrir les améliorations et nouvelles fonctions", show_whats_new),
+            ("🆕 Nouveautés v2.4.1", "Découvrir les améliorations et nouvelles fonctions", show_whats_new),
             ("📚 Aide Glossaire", "Système de glossaire permanent et protection automatique", lambda: show_quick_help(None, 'glossary')),
             ("⚡ Aide Extraction", "Extraction enhanced avec structure organisée", lambda: show_quick_help(None, 'extraction')),
             ("🔧 Aide Reconstruction", "Reconstruction avec glossaire et validation", lambda: show_quick_help(None, 'reconstruction')),
             ("✅ Aide Validation", "Validation avancée et rapports d'erreurs", lambda: show_quick_help(None, 'validation')),
-            ("📁 Organisation fichiers", "Structure organisée par jeu v2.4.0", lambda: show_quick_help(None, 'files'))
+            ("📁 Organisation fichiers", "Structure organisée par jeu v2.4.1", lambda: show_quick_help(None, 'files'))
         ]
         
         for i, (text, desc, command) in enumerate(buttons):
