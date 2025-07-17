@@ -1,7 +1,10 @@
-name: Build Multi-Platform Releases
+# .github/workflows/build-releases.yml
+name: Build & Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -10,135 +13,71 @@ env:
   RELEASE_NAME: ${{ github.ref_name }}
 
 jobs:
-  # Build sous Windows
   build-windows:
     name: Build Windows
     runs-on: windows-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      # ← Adaptez ces étapes à votre script de build Windows
+      - name: Setup Windows Build Env
+        run: |
+          echo "Préparation..."
+      - name: Build Windows Binary
+        run: |
+          ./build-scripts/build-windows.sh
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.x'
+          name: windows-${{ env.RELEASE_NAME }}
+          path: artifacts/windows/*.zip
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Build executable
-        run: |
-          pyinstaller main.py --name="TraducteurRenPyPro" --onefile --windowed --noconfirm --clean \
-            --hidden-import=tkinterdnd2 \
-            --hidden-import=utils.constants \
-            --hidden-import=utils.config \
-            --hidden-import=utils.logging \
-            --hidden-import=core.extraction \
-            --hidden-import=core.reconstruction \
-            --hidden-import=core.validation \
-            --hidden-import=core.file_manager \
-            --hidden-import=core.coherence_checker \
-            --hidden-import=ui.backup_manager \
-            --hidden-import=ui.interface \
-            --hidden-import=ui.tutorial \
-            --add-data="utils;utils" \
-            --add-data="core;core" \
-            --add-data="ui;ui"
-
-      - name: Package Windows release
-        id: package-windows
-        shell: bash
-        run: |
-          mkdir -p release/windows
-          zip -j release/windows/${{ env.RELEASE_NAME }}-windows.zip dist/TraducteurRenPyPro.exe
-
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-artifact
-          path: release/windows/${{ env.RELEASE_NAME }}-windows.zip
-
-  # Build sous Linux
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      # ← Adaptez ces étapes à votre script de build Linux
+      - name: Setup Linux Build Env
+        run: |
+          echo "Préparation..."
+      - name: Build Linux Binary
+        run: |
+          ./build-scripts/build-linux.sh
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.x'
+          name: linux-${{ env.RELEASE_NAME }}
+          path: artifacts/linux/*.tar.gz
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pyinstaller
-
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Build executable
-        run: |
-          pyinstaller main.py --name="TraducteurRenPyPro" --onefile --noconfirm --clean \
-            --hidden-import=tkinterdnd2 \
-            --hidden-import=utils.constants \
-            --hidden-import=utils.config \
-            --hidden-import=utils.logging \
-            --hidden-import=core.extraction \
-            --hidden-import=core.reconstruction \
-            --hidden-import=core.validation \
-            --hidden-import=core.file_manager \
-            --hidden-import=core.coherence_checker \
-            --hidden-import=ui.backup_manager \
-            --hidden-import=ui.interface \
-            --hidden-import=ui.tutorial \
-            --add-data="utils:utils" \
-            --add-data="core:core" \
-            --add-data="ui:ui"
-
-      - name: Package Linux release
-        id: package-linux
-        run: |
-          mkdir -p release/linux
-          tar czf release/linux/${{ env.RELEASE_NAME }}-linux.tar.gz dist/TraducteurRenPyPro
-
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-artifact
-          path: release/linux/${{ env.RELEASE_NAME }}-linux.tar.gz
-
-  # Création de la release GitHub
-  release:
+  create-release:
     name: Create GitHub Release
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v3
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
         with:
-          name: windows-artifact
+          name: windows-${{ env.RELEASE_NAME }}
           path: release/windows
 
-      - name: Download Linux artifact
-        uses: actions/download-artifact@v3
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
         with:
-          name: linux-artifact
+          name: linux-${{ env.RELEASE_NAME }}
           path: release/linux
 
-      - name: Create GitHub Release and upload assets
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           files: |
-            release/windows/${{ env.RELEASE_NAME }}-windows.zip
-            release/linux/${{ env.RELEASE_NAME }}-linux.tar.gz
+            release/windows/*.zip
+            release/linux/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

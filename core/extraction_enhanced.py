@@ -1,6 +1,6 @@
 # core/extraction_enhanced.py
 # Enhanced Extraction with Glossary Support
-# Created for Traducteur Ren'Py Pro v2.4.1
+# Created for Traducteur Ren'Py Pro v2.4.2
 
 """
 Modification de l'extraction pour intégrer le glossaire

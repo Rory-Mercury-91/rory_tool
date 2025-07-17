@@ -1,6 +1,6 @@
 # main.py
 # Traducteur Ren'Py Pro - Interface principale
-# v2.4.1 - Corrections finales des erreurs
+# v2.4.2 - Corrections finales des erreurs
 
 """
 Traducteur Ren'Py Pro
@@ -295,7 +295,7 @@ class TraducteurRenPyPro:
             
             # Message adapté selon le nombre de tentatives
             if attempts == 0:
-                title = "🎉 Bienvenue dans Traducteur Ren'Py Pro v2.4.1 !"
+                title = "🎉 Bienvenue dans Traducteur Ren'Py Pro v2.4.2 !"
                 message = "C'est votre première utilisation !\n\n🎯 Découvrez toutes les nouveautés et fonctionnalités."
                 footer = "💡 Ce guide vous fera gagner du temps"
             elif attempts == 1:
@@ -631,7 +631,7 @@ class TraducteurRenPyPro:
                     "Que souhaitez-vous consulter ?\n\n"
                     "• Oui = 📖 Guide complet (recommandé)\n"
                     "• Non = 📋 Menu d'aide (accès rapide aux sections)\n"
-                    "• Annuler = 🆕 Nouveautés v2.4.1 uniquement"
+                    "• Annuler = 🆕 Nouveautés v2.4.2 uniquement"
                 )
                 
                 if result is True:
@@ -653,7 +653,7 @@ class TraducteurRenPyPro:
                     "🎓 Centre d'aide",
                     "Que souhaitez-vous consulter ?\n\n"
                     "• Oui = 📋 Menu d'aide (accès à toutes les sections)\n"
-                    "• Non = 🆕 Nouveautés v2.4.1 directement"
+                    "• Non = 🆕 Nouveautés v2.4.2 directement"
                 )
                 
                 if result:
@@ -2072,7 +2072,7 @@ class TraducteurRenPyPro:
         try:
             from ui.tutorial import show_whats_new
             show_whats_new()
-            log_message("INFO", "Nouveautés v2.4.1 affichées")
+            log_message("INFO", "Nouveautés v2.4.2 affichées")
         except Exception as e:
             log_message("ERREUR", "Erreur affichage nouveautés", e)
             messagebox.showerror("❌ Erreur", f"Impossible d'afficher les nouveautés:\n{str(e)}")
