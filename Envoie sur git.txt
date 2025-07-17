@@ -1,6 +1,8 @@
-Envoie du commit sur git pour changement du code
-❯❯❯ git add .
-    git commit -m ""
+# Développement normal
+git add .
+git commit -m "Votre message"
 
-Envoie du tag version pour créer le build… modifier le numéro de version.
-❯❯❯ git push origin v2.2.0
+# Quand prêt pour une release
+git tag v2.4.6
+git push origin v2.4.6
+# ↳ Et hop ! Nouveaux exécutables créés automatiquement
