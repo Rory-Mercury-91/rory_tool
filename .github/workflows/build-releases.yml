@@ -23,24 +23,41 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Windows Build Env
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
         run: |
-          echo "Préparation de l'environnement Windows..."
-          # Ajoutez ici vos étapes de préparation (installation de dépendances, etc.)
+          python -m pip install --upgrade pip
+          # Dépendances principales du Traducteur Ren'Py Pro
+          pip install tkinter-dnd2
+          pip install pyinstaller
           
-      - name: Build Windows Binary
+          # Si vous avez un requirements.txt, décommentez la ligne suivante :
+          # pip install -r requirements.txt
+
+      - name: Build Windows Executable
         run: |
-          echo "Construction du binaire Windows..."
-          # Créez le dossier artifacts
-          mkdir -p artifacts/windows
+          echo "Construction du Traducteur Ren'Py Pro pour Windows..."
+          # Créer les dossiers
+          mkdir artifacts
+          mkdir artifacts/windows
           
-          # Remplacez cette ligne par votre commande de build réelle
-          # Exemple pour Go : go build -o artifacts/windows/myapp.exe ./cmd/myapp
-          # Exemple pour Node.js : npm run build:windows
+          # Créer l'exécutable avec PyInstaller
+          # Options :
+          # --onefile : Un seul fichier exécutable
+          # --windowed : Interface graphique (pas de console)
+          # --name : Nom de l'exécutable
+          # --icon : Icône (si vous en avez une)
+          pyinstaller --onefile --windowed --name "TraducteurRenPyPro" main.py
           
-          # Exemple factice - remplacez par votre logique
-          echo "Windows Binary Content" > artifacts/windows/myapp.exe
-          Compress-Archive -Path artifacts/windows/myapp.exe -DestinationPath artifacts/windows/myapp-windows.zip
+          # Copier l'exécutable
+          copy "dist/TraducteurRenPyPro.exe" "artifacts/windows/"
+          
+          # Créer l'archive avec un nom descriptif
+          Compress-Archive -Path "artifacts/windows/TraducteurRenPyPro.exe" -DestinationPath "artifacts/windows/TraducteurRenPyPro-v2.4.4-Windows.zip"
         shell: pwsh
 
       - name: Upload Windows Artifact
@@ -55,24 +72,43 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Linux Build Env
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
         run: |
-          echo "Préparation de l'environnement Linux..."
-          # Ajoutez ici vos étapes de préparation (installation de dépendances, etc.)
+          # Dépendances système pour Tkinter et interface graphique
+          sudo apt-get update
+          sudo apt-get install -y python3-tk python3-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Dépendances du Traducteur Ren'Py Pro
+          pip install tkinter-dnd2
+          pip install pyinstaller
           
+          # Si vous avez un requirements.txt, décommentez :
+          # pip install -r requirements.txt
+
       - name: Build Linux Binary
         run: |
-          echo "Construction du binaire Linux..."
-          # Créez le dossier artifacts
+          echo "Construction du Traducteur Ren'Py Pro pour Linux..."
           mkdir -p artifacts/linux
           
-          # Remplacez cette ligne par votre commande de build réelle
-          # Exemple pour Go : go build -o artifacts/linux/myapp ./cmd/myapp
-          # Exemple pour Node.js : npm run build:linux
+          # Créer l'exécutable Linux
+          pyinstaller --onefile --name "TraducteurRenPyPro" main.py
           
-          # Exemple factice - remplacez par votre logique
-          echo "Linux Binary Content" > artifacts/linux/myapp
-          tar -czf artifacts/linux/myapp-linux.tar.gz -C artifacts/linux myapp
+          # Copier l'exécutable
+          cp dist/TraducteurRenPyPro artifacts/linux/
+          
+          # Rendre exécutable (important pour Linux)
+          chmod +x artifacts/linux/TraducteurRenPyPro
+          
+          # Créer l'archive tar.gz
+          tar -czf artifacts/linux/TraducteurRenPyPro-v2.4.4-Linux.tar.gz -C artifacts/linux TraducteurRenPyPro
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
@@ -84,6 +120,8 @@ jobs:
     name: Create GitHub Release
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
+    # Ne créer une release que pour les tags
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v3
 
@@ -106,5 +144,52 @@ jobs:
           files: |
             release/windows/*.zip
             release/linux/*.tar.gz
+          body: |
+            ## 🎮 Traducteur Ren'Py Pro ${{ github.ref_name }}
+            
+            **Outil de traduction avancé pour les scripts Ren'Py**
+            
+            ### 📥 Téléchargements
+            - **Windows** : `TraducteurRenPyPro-v2.4.4-Windows.zip`
+            - **Linux** : `TraducteurRenPyPro-v2.4.4-Linux.tar.gz`
+            
+            ### 🚀 Installation
+            
+            **Windows :**
+            1. Téléchargez le fichier `.zip`
+            2. Extraire l'archive
+            3. Exécutez `TraducteurRenPyPro.exe`
+            
+            **Linux :**
+            1. Téléchargez le fichier `.tar.gz`
+            2. Extraire : `tar -xzf TraducteurRenPyPro-v2.4.4-Linux.tar.gz`
+            3. Exécutez : `./TraducteurRenPyPro`
+            
+            ### ✨ Fonctionnalités principales
+            - 📚 Système de glossaire permanent
+            - ⚡ Extraction intelligente avec protection des codes
+            - 🔧 Reconstruction précise
+            - 🎯 Support Drag & Drop et Ctrl+V
+            - ✅ Validation automatique des traductions
+            - 🛡️ Sauvegardes automatiques de sécurité
+            - 🌙 Interface moderne avec thèmes
+            
+            ### 🆕 Nouveautés v2.4.4
+            - Architecture refactorisée avec modules enhanced
+            - Structure organisée par jeu : `temporaires/[NomDuJeu]/`
+            - Glossaire permanent pour termes récurrents
+            - Validation avancée avec rapports détaillés
+            - Interface améliorée et thèmes vraiment différents
+            
+            ### 💡 Utilisation
+            1. Générez vos fichiers de traduction avec le SDK Ren'Py
+            2. Chargez le fichier `.rpy` dans l'outil
+            3. Cliquez sur "⚡ Extraire" pour créer les fichiers à traduire
+            4. Traduisez les fichiers `.txt` générés
+            5. Cliquez sur "🔧 Reconstruire" pour créer le fichier traduit
+            
+            ---
+            
+            🎓 **Guide complet** disponible dans l'application via le bouton "🎓 Aide"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

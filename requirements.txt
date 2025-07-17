@@ -1,0 +1,8 @@
+# Requirements pour le Traducteur Ren'Py Pro v2.4.4
+# Dépendances principales
+
+# Interface graphique et Drag & Drop
+tkinterdnd2>=0.3.0
+
+# Dépendances de build (pour PyInstaller)
+pyinstaller>=5.0
