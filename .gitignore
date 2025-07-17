@@ -1,8 +1,10 @@
-# Environnements virtuels Python
-venv/
-env/
-temp_venv/
-.venv/
+# Créer le .gitignore
+cat > .gitignore << 'EOF'
+# Fichiers temporaires du Traducteur Ren'Py Pro
+dossier_configs/
+temporaires/
+sauvegardes/
+avertissements/
 
 # Fichiers Python
 __pycache__/
@@ -35,3 +37,4 @@ wheels/
 # OS
 .DS_Store
 Thumbs.db
+EOF
