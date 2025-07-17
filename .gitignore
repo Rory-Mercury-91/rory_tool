@@ -1,11 +1,37 @@
-dist/
-build/
+# Environnements virtuels Python
+venv/
+env/
+temp_venv/
+.venv/
+
+# Fichiers Python
 __pycache__/
 *.pyc
-*.log
-*.backup
-test_*.txt
-*.flag
-*.txt
-*.spec
-*.envtemp_venv/
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
