@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Dépendances principales du Traducteur Ren'Py Pro
-          pip install tkinter-dnd2
+          pip install tkinterdnd2
           pip install pyinstaller
           
           # Si vous avez un requirements.txt, décommentez la ligne suivante :
@@ -87,7 +87,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Dépendances du Traducteur Ren'Py Pro
-          pip install tkinter-dnd2
+          pip install tkinterdnd2
           pip install pyinstaller
           
           # Si vous avez un requirements.txt, décommentez :

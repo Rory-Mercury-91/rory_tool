@@ -4,5 +4,23 @@
 # Interface graphique et Drag & Drop
 tkinterdnd2>=0.3.0
 
+# Modules Python standard (normalement inclus avec Python)
+# tkinter - Interface graphique (inclus avec Python)
+# json - Manipulation JSON (inclus)
+# os - Opérations système (inclus)
+# re - Expressions régulières (inclus)
+# datetime - Gestion des dates (inclus)
+# time - Fonctions temporelles (inclus)
+# collections - Structures de données (inclus)
+# shutil - Opérations fichiers (inclus)
+# subprocess - Processus externes (inclus)
+# glob - Recherche de fichiers (inclus)
+# getpass - Informations utilisateur (inclus)
+
 # Dépendances de build (pour PyInstaller)
 pyinstaller>=5.0
+
+# Notes :
+# - tkinterdnd2 est la seule dépendance externe requise
+# - Tous les autres modules sont des modules standard Python
+# - Le projet utilise une architecture modulaire sans dépendances lourdes
