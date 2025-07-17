@@ -1,6 +1,6 @@
 # core/reconstruction.py
 # Reconstruction Functions Module
-# Created for Traducteur Ren'Py Pro v2.3.0
+# Created for Traducteur Ren'Py Pro v2.4.0
 
 """
 Module de reconstruction des fichiers traduits
