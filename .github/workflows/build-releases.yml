@@ -19,13 +19,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # ← Adaptez ces étapes à votre script de build Windows
       - name: Setup Windows Build Env
         run: |
-          echo "Préparation..."
+          echo "Préparation de l'environnement Windows..."
+          # Ajoutez ici vos étapes de préparation (installation de dépendances, etc.)
+          
       - name: Build Windows Binary
         run: |
-          ./build-scripts/build-windows.sh
+          echo "Construction du binaire Windows..."
+          # Créez le dossier artifacts
+          mkdir -p artifacts/windows
+          
+          # Remplacez cette ligne par votre commande de build réelle
+          # Exemple pour Go : go build -o artifacts/windows/myapp.exe ./cmd/myapp
+          # Exemple pour Node.js : npm run build:windows
+          
+          # Exemple factice - remplacez par votre logique
+          echo "Windows Binary Content" > artifacts/windows/myapp.exe
+          Compress-Archive -Path artifacts/windows/myapp.exe -DestinationPath artifacts/windows/myapp-windows.zip
+        shell: pwsh
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -39,13 +51,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # ← Adaptez ces étapes à votre script de build Linux
       - name: Setup Linux Build Env
         run: |
-          echo "Préparation..."
+          echo "Préparation de l'environnement Linux..."
+          # Ajoutez ici vos étapes de préparation (installation de dépendances, etc.)
+          
       - name: Build Linux Binary
         run: |
-          ./build-scripts/build-linux.sh
+          echo "Construction du binaire Linux..."
+          # Créez le dossier artifacts
+          mkdir -p artifacts/linux
+          
+          # Remplacez cette ligne par votre commande de build réelle
+          # Exemple pour Go : go build -o artifacts/linux/myapp ./cmd/myapp
+          # Exemple pour Node.js : npm run build:linux
+          
+          # Exemple factice - remplacez par votre logique
+          echo "Linux Binary Content" > artifacts/linux/myapp
+          tar -czf artifacts/linux/myapp-linux.tar.gz -C artifacts/linux myapp
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
