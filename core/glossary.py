@@ -1,6 +1,6 @@
 # core/glossary.py
 # Glossary Management System
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Système de gestion du glossaire pour la traduction automatique
@@ -196,7 +196,7 @@ class GlossaryManager:
         """Exporte le glossaire vers un fichier texte"""
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write("# Glossaire Traducteur Ren'Py Pro\n")
+                f.write("# Glossaire RenExtract\n")
                 f.write("# Format: Original => Traduction\n\n")
                 
                 for original, translation in self.glossary.items():

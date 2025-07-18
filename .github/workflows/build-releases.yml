@@ -31,33 +31,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Dépendances principales du Traducteur Ren'Py Pro
           pip install tkinterdnd2
           pip install pyinstaller
-          
-          # Si vous avez un requirements.txt, décommentez la ligne suivante :
           # pip install -r requirements.txt
 
       - name: Build Windows Executable
         run: |
-          echo "Construction du Traducteur Ren'Py Pro pour Windows..."
-          # Créer les dossiers
+          echo "Construction du RenExtract pour Windows..."
           mkdir artifacts
           mkdir artifacts/windows
-          
-          # Créer l'exécutable avec PyInstaller
-          # Options :
-          # --onefile : Un seul fichier exécutable
-          # --windowed : Interface graphique (pas de console)
-          # --name : Nom de l'exécutable
-          # --icon : Icône (si vous en avez une)
-          pyinstaller --onefile --windowed --name "TraducteurRenPyPro" main.py
-          
-          # Copier l'exécutable
-          copy "dist/TraducteurRenPyPro.exe" "artifacts/windows/"
-          
-          # Créer l'archive avec un nom descriptif
-          Compress-Archive -Path "artifacts/windows/TraducteurRenPyPro.exe" -DestinationPath "artifacts/windows/TraducteurRenPyPro-v2.4.4-Windows.zip"
+          pyinstaller --onefile --windowed --name "RenExtract" main.py
+          copy "dist/RenExtract.exe" "artifacts/windows/"
+          Compress-Archive -Path "artifacts/windows/RenExtract.exe" -DestinationPath "artifacts/windows/RenExtract-${{ env.RELEASE_NAME }}-Windows.zip"
         shell: pwsh
 
       - name: Upload Windows Artifact
@@ -79,36 +64,24 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          # Dépendances système pour Tkinter et interface graphique
           sudo apt-get update
           sudo apt-get install -y python3-tk python3-dev
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          # Dépendances du Traducteur Ren'Py Pro
           pip install tkinterdnd2
           pip install pyinstaller
-          
-          # Si vous avez un requirements.txt, décommentez :
           # pip install -r requirements.txt
 
       - name: Build Linux Binary
         run: |
-          echo "Construction du Traducteur Ren'Py Pro pour Linux..."
+          echo "Construction du RenExtract pour Linux..."
           mkdir -p artifacts/linux
-          
-          # Créer l'exécutable Linux
-          pyinstaller --onefile --name "TraducteurRenPyPro" main.py
-          
-          # Copier l'exécutable
-          cp dist/TraducteurRenPyPro artifacts/linux/
-          
-          # Rendre exécutable (important pour Linux)
-          chmod +x artifacts/linux/TraducteurRenPyPro
-          
-          # Créer l'archive tar.gz
-          tar -czf artifacts/linux/TraducteurRenPyPro-v2.4.4-Linux.tar.gz -C artifacts/linux TraducteurRenPyPro
+          pyinstaller --onefile --name "RenExtract" main.py
+          cp dist/RenExtract artifacts/linux/
+          chmod +x artifacts/linux/RenExtract
+          tar -czf artifacts/linux/RenExtract-${{ env.RELEASE_NAME }}-Linux.tar.gz -C artifacts/linux RenExtract
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
@@ -120,7 +93,6 @@ jobs:
     name: Create GitHub Release
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
-    # Ne créer une release que pour les tags
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v3
@@ -145,25 +117,25 @@ jobs:
             release/windows/*.zip
             release/linux/*.tar.gz
           body: |
-            ## 🎮 Traducteur Ren'Py Pro ${{ github.ref_name }}
+            ## 🎮 RenExtract ${{ github.ref_name }}
             
             **Outil de traduction avancé pour les scripts Ren'Py**
             
             ### 📥 Téléchargements
-            - **Windows** : `TraducteurRenPyPro-v2.4.4-Windows.zip`
-            - **Linux** : `TraducteurRenPyPro-v2.4.4-Linux.tar.gz`
+            - **Windows** : `RenExtract-${{ env.RELEASE_NAME }}-Windows.zip`
+            - **Linux** : `RenExtract-${{ env.RELEASE_NAME }}-Linux.tar.gz`
             
             ### 🚀 Installation
             
             **Windows :**
             1. Téléchargez le fichier `.zip`
             2. Extraire l'archive
-            3. Exécutez `TraducteurRenPyPro.exe`
+            3. Exécutez `RenExtract.exe`
             
             **Linux :**
             1. Téléchargez le fichier `.tar.gz`
-            2. Extraire : `tar -xzf TraducteurRenPyPro-v2.4.4-Linux.tar.gz`
-            3. Exécutez : `./TraducteurRenPyPro`
+            2. Extraire : `tar -xzf RenExtract-${{ env.RELEASE_NAME }}-Linux.tar.gz`
+            3. Exécutez : `./RenExtract`
             
             ### ✨ Fonctionnalités principales
             - 📚 Système de glossaire permanent
@@ -174,7 +146,7 @@ jobs:
             - 🛡️ Sauvegardes automatiques de sécurité
             - 🌙 Interface moderne avec thèmes
             
-            ### 🆕 Nouveautés v2.4.4
+            ### 🆕 Nouveautés ${{ env.RELEASE_NAME }}
             - Architecture refactorisée avec modules enhanced
             - Structure organisée par jeu : `temporaires/[NomDuJeu]/`
             - Glossaire permanent pour termes récurrents

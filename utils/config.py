@@ -1,6 +1,6 @@
 # utils/config.py
 # Configuration Management Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module de gestion de la configuration et des préférences utilisateur
@@ -74,7 +74,15 @@ class ConfigManager:
             directory = os.path.dirname(filepath)
             self.set("last_directory", directory)
             log_message("INFO", f"Dossier mémorisé: {self.anonymize_path(directory)}")
-    
+
+    def get_language(self):
+        """Récupère la langue configurée"""
+        return self.config.get("language", "fr")
+
+    def set_language(self, language_code):
+        """Définit la langue"""
+        self.set("language", language_code)
+
     def is_auto_open_enabled(self):
         """Vérifie si l'ouverture automatique est activée"""
         return self.config.get("auto_open_files", True)

@@ -1,6 +1,6 @@
 # utils/logging.py
 # Logging System Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module de gestion des logs
@@ -22,7 +22,7 @@ def initialize_log():
         
         # Réinitialiser le fichier log
         with open(FILE_NAMES["log"], 'w', encoding='utf-8') as f:
-            f.write(f"=== TRADUCTEUR REN'PY PRO - LOG DE SESSION ===\n")
+            f.write(f"=== RenExtract - LOG DE SESSION ===\n")
             f.write(f"Démarrage: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 50 + "\n\n")
             
@@ -96,13 +96,7 @@ def anonymize_path(path):
     return anonymized
 
 def extract_game_name(file_path):
-    """
-    ✅ CORRECTION : Extrait le nom du jeu principal depuis le chemin
-    
-    Exemple:
-    C:\\Users\\Rory Mercury 91\\Documents\\GuiltyPleasure-0.49-pc\\game\\tl\\fr_zenpy_DeepL_andric31
-    -> GuiltyPleasure-0.49-pc
-    """
+    """✅ CORRECTION : Extrait le nom du jeu de manière fiable"""
     try:
         if not file_path:
             return "Projet_Inconnu"
@@ -111,51 +105,34 @@ def extract_game_name(file_path):
         normalized_path = os.path.normpath(file_path)
         path_parts = normalized_path.split(os.sep)
         
-        # Debug : afficher le chemin pour comprendre
-        log_message("DEBUG", f"Chemin analysé: {file_path}")
-        log_message("DEBUG", f"Parties du chemin: {path_parts}")
-        
-        # Chercher le dossier principal du jeu
-        # On veut trouver le dossier qui contient "game" ou "tl"
+        # ✅ MÉTHODE 1 : Chercher le pattern temporaires/[NOM_JEU]/
         for i, part in enumerate(path_parts):
-            part_lower = part.lower()
+            if part.lower() == 'temporaires' and i + 1 < len(path_parts):
+                game_name = path_parts[i + 1]
+                if game_name and game_name != 'fichiers_a_traduire':
             
-            # Si on trouve "game" ou "tl", le dossier parent est le jeu
-            if part_lower in ['game', 'tl']:
-                if i > 0:
-                    game_folder = path_parts[i - 1]
-                    log_message("DEBUG", f"Nom du jeu détecté: {game_folder}")
-                    return game_folder
+                    return game_name
         
-        # Si pas trouvé par la méthode game/tl, chercher des patterns typiques
-        for i, part in enumerate(path_parts):
-            part_lower = part.lower()
-            
-            # Ignorer les dossiers système et utilisateur
-            if part_lower in ['documents', 'desktop', 'downloads', 'users', 'program files', 'windows']:
-                continue
-            
-            # Chercher des patterns de nom de jeu
+        # ✅ MÉTHODE 2 : Chercher un pattern de nom de jeu typique
+        for part in reversed(path_parts):  # Commencer par la fin
             if (len(part) > 3 and 
-                not part.isdigit() and 
-                not part_lower.startswith('user') and
-                not part_lower in ['game', 'tl', 'french', 'english', 'scripts', 'script']):
+                not part.lower() in ['game', 'tl', 'french', 'english', 'fichiers_a_traduire', 'fichiers_a_ne_pas_traduire'] and
+                not part.lower().startswith('round') and
+                (any(char in part for char in ['-', '.', '_']) or any(char.isdigit() for char in part))):
                 
-                # Vérifier si c'est probablement un nom de jeu
-                if (any(char.isalpha() for char in part) and 
-                    ('.' in part or '-' in part or len(part) > 5)):
-                    
-                    log_message("DEBUG", f"Nom du jeu détecté par pattern: {part}")
-                    return part
+
+                return part
         
-        # Fallback : utiliser le nom du fichier
+        # ✅ MÉTHODE 3 : Fallback - utiliser le nom du fichier nettoyé
         filename = os.path.basename(file_path)
         if filename.endswith('.rpy'):
-            filename = filename[:-4]  # Enlever .rpy
+            filename = filename[:-4]
         
-        log_message("DEBUG", f"Fallback nom du jeu: {filename}")
-        return filename if filename else "Projet_Inconnu"
+        # Nettoyer et créer un nom acceptable
+        cleaned_name = filename.replace('_', '-')
+        
+        return cleaned_name if cleaned_name else "Projet_Inconnu"
         
     except Exception as e:
-        log_message("WARNING", f"Impossible d'extraire le nom du jeu de {anonymize_path(file_path)}", e)
+
         return "Projet_Inconnu"

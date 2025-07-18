@@ -1,14 +1,15 @@
 # ui/interface.py
-# Main Interface Components
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Interface Components Module
+# Created for RenExtract v2.5.0
 
 """
-Module des composants d'interface utilisateur
+Composants d'interface utilisateur réutilisables
 """
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from utils.constants import VERSION, MESSAGES
+from utils.constants import THEMES, VERSION
+from utils.config import config_manager
 from ui.themes import theme_manager
 
 class SaveModeDialog:
@@ -18,20 +19,14 @@ class SaveModeDialog:
         self.parent = parent
         self.result = None
         self.dialog = None
+        self._create_dialog()
     
-    def show(self):
-        """
-        Affiche le dialogue et retourne le choix
-        
-        Returns:
-            str: 'overwrite', 'new_file' ou None si annulé
-        """
+    def _create_dialog(self):
+        """Crée le dialogue de sélection du mode de sauvegarde"""
         self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title("💾 Mode de Sauvegarde")
-        self.dialog.geometry("500x300")
+        self.dialog.title("💾 Mode de sauvegarde")
+        self.dialog.geometry("500x400")
         self.dialog.resizable(False, False)
-        self.dialog.transient(self.parent)
-        self.dialog.grab_set()
         
         # Centrer la fenêtre
         self.dialog.update_idletasks()
@@ -40,59 +35,54 @@ class SaveModeDialog:
         self.dialog.geometry(f"+{x}+{y}")
         
         # Appliquer le thème
-        theme = theme_manager.get_dialog_theme()
+        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
         self.dialog.configure(bg=theme["bg"])
         
+        # Créer le contenu
         self._create_content(theme)
         
-        # Attendre la réponse
-        self.dialog.wait_window()
-        return self.result
+        # Rendre le dialogue modal
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+        self.dialog.focus_set()
     
     def _create_content(self, theme):
         """Crée le contenu du dialogue"""
         # Titre
-        title_frame = tk.Frame(self.dialog, bg=theme["bg"])
-        title_frame.pack(fill='x', padx=20, pady=20)
-        
         title_label = tk.Label(
-            title_frame,
+            self.dialog,
             text="💾 Choisissez le mode de sauvegarde",
             font=('Segoe UI Emoji', 14, 'bold'),
             bg=theme["bg"],
-            fg=theme["fg"]
+            fg=theme["accent"]
         )
-        title_label.pack()
+        title_label.pack(pady=20)
         
-        subtitle_label = tk.Label(
-            title_frame,
-            text="Ce choix sera mémorisé pour cette session",
-            font=('Segoe UI Emoji', 9),
+        # Description
+        desc_label = tk.Label(
+            self.dialog,
+            text="Comment souhaitez-vous sauvegarder le fichier traduit ?",
+            font=('Segoe UI Emoji', 10),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        subtitle_label.pack(pady=(5, 0))
+        desc_label.pack(pady=(0, 20))
         
         # Options
-        options_frame = tk.Frame(self.dialog, bg=theme["bg"])
-        options_frame.pack(fill='both', expand=True, padx=20)
-        
-        # Option 1: Écraser
         self._create_option(
-            options_frame, theme, 
-            "🔄 Écraser le fichier original",
-            "⚠️ Le fichier original sera remplacé par la traduction",
-            theme["warning"], '#000000',
-            lambda: self._choose_mode('overwrite')
+            self.dialog, theme,
+            "📄 Nouveau fichier",
+            "Crée un nouveau fichier avec le suffixe '_traduit'",
+            '#28a745', '#ffffff',
+            lambda: self._choose_mode('new_file')
         )
         
-        # Option 2: Créer nouveau fichier
         self._create_option(
-            options_frame, theme,
-            "📝 Créer un nouveau fichier", 
-            "✅ Garde l'original et crée un fichier traduit séparé\n💡 L'original sera automatiquement commenté",
-            theme["accent"], theme["button_fg"],
-            lambda: self._choose_mode('new_file')
+            self.dialog, theme,
+            "🔄 Remplacer l'original",
+            "Remplace directement le fichier original (sauvegarde automatique)",
+            '#dc3545', '#ffffff',
+            lambda: self._choose_mode('overwrite')
         )
         
         # Bouton annuler
@@ -105,7 +95,7 @@ class SaveModeDialog:
             activebackground='#b02a37',
             bd=0,
             pady=8,
-            command=self.dialog.destroy
+            command=self._cancel
         )
         cancel_btn.pack(pady=10)
     
@@ -139,30 +129,45 @@ class SaveModeDialog:
     def _choose_mode(self, mode):
         """Enregistre le choix et ferme le dialogue"""
         self.result = mode
-        self.dialog.destroy()
+        self._safe_destroy()
+    
+    def _cancel(self):
+        """Annule et ferme le dialogue"""
+        self.result = None
+        self._safe_destroy()
+    
+    def _safe_destroy(self):
+        """Ferme le dialogue de manière sécurisée"""
+        if self.dialog is not None:
+            try:
+                if self.dialog.winfo_exists():
+                    self.dialog.destroy()
+            except Exception:
+                pass
+            self.dialog = None
+    
+    def show(self):
+        """Affiche le dialogue et retourne le résultat"""
+        if self.dialog is not None:
+            self.dialog.wait_window()
+        return self.result
 
 class ProgressDialog:
     """Dialogue de progression pour les opérations longues"""
     
-    def __init__(self, parent, title="Traitement en cours..."):
+    def __init__(self, parent, title="⏳ Traitement en cours..."):
         self.parent = parent
         self.dialog = None
-        self.progress_var = tk.StringVar()
-        self.title = title
+        self.progress_var = None
+        self.progress_bar = None
+        self._create_dialog(title)
     
-    def show(self, message="Veuillez patienter..."):
-        """
-        Affiche le dialogue de progression
-        
-        Args:
-            message (str): Message à afficher
-        """
+    def _create_dialog(self, title):
+        """Crée le dialogue de progression"""
         self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title(self.title)
+        self.dialog.title(title)
         self.dialog.geometry("400x150")
         self.dialog.resizable(False, False)
-        self.dialog.transient(self.parent)
-        self.dialog.grab_set()
         
         # Centrer la fenêtre
         self.dialog.update_idletasks()
@@ -171,47 +176,65 @@ class ProgressDialog:
         self.dialog.geometry(f"+{x}+{y}")
         
         # Appliquer le thème
-        theme = theme_manager.get_dialog_theme()
+        theme = THEMES["dark"] if config_manager.is_dark_mode_enabled() else THEMES["light"]
         self.dialog.configure(bg=theme["bg"])
         
-        # Contenu
-        main_frame = tk.Frame(self.dialog, bg=theme["bg"])
-        main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        # Rendre le dialogue modal
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
         
-        # Message
-        self.progress_var.set(message)
-        message_label = tk.Label(
-            main_frame,
-            textvariable=self.progress_var,
-            font=('Segoe UI Emoji', 11),
+        # Créer le contenu
+        self._create_content(theme)
+    
+    def _create_content(self, theme):
+        """Crée le contenu du dialogue de progression"""
+        # Titre
+        title_label = tk.Label(
+            self.dialog,
+            text="⏳ Traitement en cours...",
+            font=('Segoe UI Emoji', 12, 'bold'),
             bg=theme["bg"],
-            fg=theme["fg"]
+            fg=theme["accent"]
         )
-        message_label.pack(pady=(0, 20))
+        title_label.pack(pady=20)
         
-        # Barre de progression indéterminée
+        # Barre de progression
+        self.progress_var = tk.StringVar(value="Initialisation...")
         self.progress_bar = ttk.Progressbar(
-            main_frame,
+            self.dialog,
             mode='indeterminate',
             length=300
         )
-        self.progress_bar.pack()
-        self.progress_bar.start(10)
+        self.progress_bar.pack(pady=10)
+        self.progress_bar.start()
         
-        # Mettre à jour l'affichage
-        self.dialog.update()
+        # Message de progression
+        message_label = tk.Label(
+            self.dialog,
+            textvariable=self.progress_var,
+            font=('Segoe UI Emoji', 9),
+            bg=theme["bg"],
+            fg=theme["fg"]
+        )
+        message_label.pack(pady=10)
     
     def update_message(self, message):
         """Met à jour le message affiché"""
-        if self.dialog and self.dialog.winfo_exists():
+        if self.dialog and self.dialog.winfo_exists() and self.progress_var is not None:
             self.progress_var.set(message)
             self.dialog.update()
     
     def close(self):
         """Ferme le dialogue de progression"""
-        if self.dialog and self.dialog.winfo_exists():
-            self.progress_bar.stop()
-            self.dialog.destroy()
+        if self.dialog is not None:
+            try:
+                if self.progress_bar is not None:
+                    self.progress_bar.stop()
+                if self.dialog.winfo_exists():
+                    self.dialog.destroy()
+            except Exception:
+                pass
+            self.dialog = None
 
 class StatusBar:
     """Barre de statut avancée"""
@@ -313,7 +336,7 @@ class AboutDialog:
     @staticmethod
     def show(parent):
         """Affiche le dialogue À propos"""
-        about_text = f"""🎮 Traducteur Ren'Py Pro
+        about_text = f"""🎮 RenExtract
 
 Version: {VERSION}
 Développé pour la traduction de scripts Ren'Py
@@ -327,7 +350,7 @@ Développé pour la traduction de scripts Ren'Py
 • Interface moderne avec thèmes
 • Sauvegarde automatique de sécurité
 
-🎯 Nouveautés v2.4.4:
+🎯 Nouveautés v2.5.0:
 • Architecture refactorisée
 • Validation avancée des fichiers Ren'Py
 • Contrôle de l'ouverture automatique

@@ -1,6 +1,6 @@
 # core/extraction.py
 # Extraction Functions Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module d'extraction des textes depuis les fichiers Ren'Py
@@ -37,16 +37,17 @@ def get_file_base_name(filepath):
     return safe_name
 
 class TextExtractor:
-    """Classe principale pour l'extraction des textes"""
+    """Classe principale pour l'extraction des textes (mode simple ou avancé)"""
     
-    def __init__(self):
+    def __init__(self, use_glossary=False, use_ellipsis=False):
         self.file_content = []
         self.original_path = None
         self.extraction_time = 0
         self.extracted_count = 0
         self.asterix_count = 0
         self.empty_count = 0
-        
+        self.use_glossary = use_glossary
+        self.use_ellipsis = use_ellipsis
         # Données d'extraction
         self.mapping = OrderedDict()
         self.asterix_mapping = OrderedDict()
@@ -57,21 +58,17 @@ class TextExtractor:
         self.line_suffixes = []
         self.asterix_texts = []
         self.empty_texts = []
+        # Attributs avancés (toujours initialisés pour éviter les erreurs)
+        self.glossary_mapping = OrderedDict()
+        self.ellipsis_mapping = OrderedDict()
+        self.ellipsis_counter = 0
     
     def load_file_content(self, file_content, original_path):
-        """
-        Charge le contenu du fichier à traiter
-        
-        Args:
-            file_content (list): Lignes du fichier
-            original_path (str): Chemin du fichier original
-        """
-        self.file_content = file_content[:]  # Copie pour éviter la modification de l'original
+        self.file_content = file_content[:]
         self.original_path = original_path
         self._reset_extraction_data()
     
     def _reset_extraction_data(self):
-        """Remet à zéro les données d'extraction"""
         self.mapping.clear()
         self.asterix_mapping.clear()
         self.empty_mapping.clear()
@@ -81,47 +78,35 @@ class TextExtractor:
         self.line_suffixes.clear()
         self.asterix_texts.clear()
         self.empty_texts.clear()
-        
         self.extraction_time = 0
         self.extracted_count = 0
         self.asterix_count = 0
         self.empty_count = 0
+        self.glossary_mapping.clear()
+        self.ellipsis_mapping.clear()
+        self.ellipsis_counter = 0
     
     def extract_texts(self):
-        """
-        Fonction principale d'extraction des textes
-        
-        Returns:
-            dict: Résultats de l'extraction avec chemins des fichiers créés
-        """
         if not self.file_content:
             raise ValueError("Aucun contenu de fichier chargé")
-        
         start_time = time.time()
-        log_message("INFO", f"Début d'extraction pour {anonymize_path(self.original_path) if self.original_path else 'fichier_inconnu'}")
-        
+        log_message("INFO", f"Début d'extraction ({'avancée' if self.use_glossary or self.use_ellipsis else 'simple'}) pour {anonymize_path(self.original_path) if self.original_path else 'fichier_inconnu'}")
         try:
-            # Étapes d'extraction
+            if self.use_ellipsis:
+                self._apply_ellipsis_protection()
+            if self.use_glossary:
+                self._apply_glossary_protection()
             self._build_code_mapping()
             self._build_asterix_mapping()
             self._apply_empty_text_protection()
             self._extract_dialogue_texts()
-            
-            # Calcul du temps
             self.extraction_time = time.time() - start_time
-            
-            # Sauvegarde des fichiers
             result = self._save_extraction_files()
-            
-            # Statistiques finales
             self.extracted_count = len(self.extracted_texts)
             self.asterix_count = len(self.asterix_texts)
             self.empty_count = len(self.empty_texts)
-            
-            log_message("INFO", f"Extraction réussie en {self.extraction_time:.2f}s: {self.extracted_count} textes, {self.asterix_count} astérisques, {self.empty_count} vides")
-            
+            log_message("INFO", f"Extraction {'avancée' if self.use_glossary or self.use_ellipsis else 'simple'} réussie en {self.extraction_time:.2f}s: {self.extracted_count} textes, {self.asterix_count} astérisques, {self.empty_count} vides" + (f", {len(self.glossary_mapping) if self.use_glossary else 0} termes de glossaire, {len(self.ellipsis_mapping) if self.use_ellipsis else 0} points de suspension" if self.use_glossary or self.use_ellipsis else ""))
             return result
-            
         except Exception as e:
             log_message("ERREUR", "Erreur critique pendant l'extraction", e)
             raise
@@ -260,6 +245,20 @@ class TextExtractor:
             self.empty_mapping = OrderedDict()
             log_message("WARNING", "Protection complète désactivée suite à l'erreur")
     
+    def _apply_ellipsis_protection(self):
+        """Protection avancée des points de suspension (implémentation à compléter si use_ellipsis=True)"""
+        if not self.use_ellipsis:
+            return
+        # TODO: Implémenter la logique avancée ici (voir extraction_enhanced.py)
+        pass
+
+    def _apply_glossary_protection(self):
+        """Protection avancée du glossaire (implémentation à compléter si use_glossary=True)"""
+        if not self.use_glossary:
+            return
+        # TODO: Implémenter la logique avancée ici (voir extraction_enhanced.py)
+        pass
+
     def _extract_dialogue_texts(self):
         """Extrait les textes de dialogue et stocke les positions"""
         try:
@@ -437,25 +436,22 @@ class TextExtractor:
 # Fonction utilitaire pour compatibilité avec l'ancienne interface
 def extraire_textes(file_content, original_path):
     """
-    Fonction d'extraction compatible avec l'ancienne interface
-    
-    Args:
-        file_content (list): Contenu du fichier
-        original_path (str): Chemin du fichier original
-        
-    Returns:
-        dict: Résultats de l'extraction
+    Fonction d'extraction compatible avec l'ancienne interface (mode simple)
     """
-    # 1) Validation avant extraction
     from core.validation import validate_before_extraction, create_safety_backup
     validate_before_extraction(original_path)
     create_safety_backup(original_path)
+    extractor = TextExtractor(use_glossary=False, use_ellipsis=False)
+    extractor.load_file_content(file_content, original_path)
+    return extractor.extract_texts()
 
-    # 2) (Optionnel) Préparer le dossier temporaire
-    # from core.file_manager import TempFileManager
-    # TempFileManager().ensure_temp_dir_for(original_path)  # Method not implemented
-
-    # 3) Lancer l'extraction
-    extractor = TextExtractor()
+def extraire_textes_enhanced(file_content, original_path):
+    """
+    Fonction d'extraction avec support du glossaire et des points de suspension (mode avancé)
+    """
+    from core.validation import validate_before_extraction, create_safety_backup
+    validate_before_extraction(original_path)
+    create_safety_backup(original_path)
+    extractor = TextExtractor(use_glossary=True, use_ellipsis=True)
     extractor.load_file_content(file_content, original_path)
     return extractor.extract_texts()

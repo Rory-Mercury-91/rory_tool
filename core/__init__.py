@@ -1,6 +1,6 @@
 # core/__init__.py
 """
-Module core pour le Traducteur Ren'Py Pro
+Module core pour le RenExtract
 Contient la logique d'extraction, reconstruction et validation
 """
 

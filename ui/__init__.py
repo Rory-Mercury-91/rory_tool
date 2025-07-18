@@ -1,6 +1,6 @@
 # ui/__init__.py
 """
-Module interface utilisateur pour le Traducteur Ren'Py Pro
+Module interface utilisateur pour le RenExtract
 Contient l'interface graphique, les thèmes et le tutoriel
 """
 

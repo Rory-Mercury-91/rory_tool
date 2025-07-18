@@ -1,6 +1,6 @@
 # utils/__init__.py
 """
-Module utilitaires pour le Traducteur Ren'Py Pro
+Module utilitaires pour le RenExtract
 Contient la configuration, le logging et les constantes
 """
 

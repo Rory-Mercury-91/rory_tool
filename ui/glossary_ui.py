@@ -1,6 +1,6 @@
 # ui/glossary_ui.py
 # Glossary User Interface
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Interface utilisateur pour la gestion du glossaire
@@ -13,12 +13,14 @@ from collections import OrderedDict
 from core.glossary import glossary_manager
 from utils.logging import log_message
 from utils.constants import FOLDERS
+from utils.i18n import i18n, _
 
 class GlossaryDialog:
     """Dialogue de gestion du glossaire"""
     
-    def __init__(self, parent):
+    def __init__(self, parent, main_app=None):
         self.parent = parent
+        self.main_app = main_app  # Instance de l'application principale pour i18n
         self.dialog = None
         self.search_var = tk.StringVar()
         self.search_var.trace('w', self.on_search_change)
@@ -33,11 +35,33 @@ class GlossaryDialog:
         self.original_var = tk.StringVar()
         self.translation_var = tk.StringVar()
         self.selected_item = None
+        
+        # Références aux widgets pour mise à jour de langue
+        self.title_label = None
+        self.search_label = None
+        self.list_label = None
+        self.edit_label = None
+        self.original_label = None
+        self.translation_label = None
+        self.stats_label = None
+        
+        # Références aux boutons pour mise à jour de langue
+        self.add_btn = None
+        self.update_btn = None
+        self.delete_btn = None
+        self.clear_btn = None
+        self.export_btn = None
+        self.import_btn = None
+        self.validate_btn = None
+        self.close_btn = None
 
     def show(self):
         """Affiche le dialogue du glossaire"""
+        # Debug pour vérifier l'état du système i18n
+
+        
         self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title("📚 Gestionnaire de Glossaire")
+        self.dialog.title(_('glossary.title'))
         self.dialog.geometry("800x700")
         self.dialog.resizable(True, True)
         
@@ -69,38 +93,38 @@ class GlossaryDialog:
         header_frame = tk.Frame(self.dialog, bg=theme["bg"])
         header_frame.pack(fill='x', padx=10, pady=10)
         
-        title_label = tk.Label(
+        self.title_label = tk.Label(
             header_frame,
-            text="📚 Gestionnaire de Glossaire",
+            text=_('glossary.title'),
             font=('Segoe UI Emoji', 16, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        title_label.pack(side='left')
+        self.title_label.pack(side='left')
         
         # Statistiques
         stats = glossary_manager.get_statistics()
-        stats_label = tk.Label(
+        self.stats_label = tk.Label(
             header_frame,
             text=f"📊 {stats['total_entries']} entrées",
             font=('Segoe UI Emoji', 12),
             bg=theme["bg"],
             fg=theme["accent"]
         )
-        stats_label.pack(side='right')
+        self.stats_label.pack(side='right')
         
         # Barre de recherche
         search_frame = tk.Frame(self.dialog, bg=theme["bg"])
         search_frame.pack(fill='x', padx=10, pady=5)
         
-        search_label = tk.Label(
+        self.search_label = tk.Label(
             search_frame,
-            text="🔍 Rechercher:",
+            text=_('glossary.search'),
             font=('Segoe UI Emoji', 10),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        search_label.pack(side='left')
+        self.search_label.pack(side='left')
         
         self.search_entry = tk.Entry(
             search_frame,
@@ -121,14 +145,14 @@ class GlossaryDialog:
         left_frame = tk.Frame(main_frame, bg=theme["bg"])
         left_frame.pack(side='left', fill='both', expand=True)
         
-        list_label = tk.Label(
+        self.list_label = tk.Label(
             left_frame,
-            text="📝 Entrées du glossaire",
+            text=_('glossary.entries_title'),
             font=('Segoe UI Emoji', 12, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        list_label.pack(anchor='w', pady=(0, 5))
+        self.list_label.pack(anchor='w', pady=(0, 5))
         
         # Treeview pour la liste
         self.tree = ttk.Treeview(
@@ -139,8 +163,8 @@ class GlossaryDialog:
         )
         
         # Configuration des colonnes
-        self.tree.heading('original', text='Original')
-        self.tree.heading('translation', text='Traduction')
+        self.tree.heading('original', text=_('glossary.original_label'))
+        self.tree.heading('translation', text=_('glossary.translation_label'))
         self.tree.column('original', width=200)
         self.tree.column('translation', width=200)
         
@@ -160,27 +184,30 @@ class GlossaryDialog:
         right_frame.pack(side='right', fill='y', padx=(10, 0))
         right_frame.pack_propagate(False)
         
-        edit_label = tk.Label(
+        self.edit_label = tk.Label(
             right_frame,
-            text="✏️ Édition",
+            text=_('glossary.edit_title'),
             font=('Segoe UI Emoji', 12, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        edit_label.pack(anchor='w', pady=(0, 10))
+        self.edit_label.pack(anchor='w', pady=(0, 10))
         
-        # Champ Original
-        original_label = tk.Label(
-            right_frame,
-            text="Original:",
+        # Champs d'édition
+        original_frame = tk.Frame(right_frame, bg=theme["bg"])
+        original_frame.pack(fill='x', pady=(0, 10))
+        
+        self.original_label = tk.Label(
+            original_frame,
+            text=_('glossary.original_label'),
             font=('Segoe UI', 10),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        original_label.pack(anchor='w')
+        self.original_label.pack(anchor='w')
         
         self.original_entry = tk.Entry(
-            right_frame,
+            original_frame,
             textvariable=self.original_var,
             font=('Segoe UI', 10),
             bg=theme["entry_bg"],
@@ -188,20 +215,22 @@ class GlossaryDialog:
             relief='flat',
             bd=5
         )
-        self.original_entry.pack(fill='x', pady=(0, 10))
+        self.original_entry.pack(fill='x', pady=(5, 0))
         
-        # Champ Traduction
-        translation_label = tk.Label(
-            right_frame,
-            text="Traduction:",
+        translation_frame = tk.Frame(right_frame, bg=theme["bg"])
+        translation_frame.pack(fill='x', pady=(0, 10))
+        
+        self.translation_label = tk.Label(
+            translation_frame,
+            text=_('glossary.translation_label'),
             font=('Segoe UI', 10),
             bg=theme["bg"],
             fg=theme["fg"]
         )
-        translation_label.pack(anchor='w')
+        self.translation_label.pack(anchor='w')
         
         self.translation_entry = tk.Entry(
-            right_frame,
+            translation_frame,
             textvariable=self.translation_var,
             font=('Segoe UI', 10),
             bg=theme["entry_bg"],
@@ -209,28 +238,28 @@ class GlossaryDialog:
             relief='flat',
             bd=5
         )
-        self.translation_entry.pack(fill='x', pady=(0, 15))
+        self.translation_entry.pack(fill='x', pady=(5, 0))
         
-        # Boutons d'édition
+        # Boutons d'action
         button_frame = tk.Frame(right_frame, bg=theme["bg"])
         button_frame.pack(fill='x', pady=(0, 10))
         
-        add_btn = tk.Button(
+        self.add_btn = tk.Button(
             button_frame,
-            text="➕ Ajouter",
+            text=_('glossary.buttons.add'),
             font=('Segoe UI Emoji', 10),
-            bg=theme["accent"],
-            fg="#000000",
+            bg=theme.get("success", "#28a745"),
+            fg='#000000',
             relief='flat',
             bd=0,
             pady=8,
             command=self.add_entry
         )
-        add_btn.pack(fill='x', pady=(0, 5))
+        self.add_btn.pack(fill='x', pady=(0, 5))
         
-        update_btn = tk.Button(
+        self.update_btn = tk.Button(
             button_frame,
-            text="✏️ Modifier",
+            text=_('glossary.buttons.modify'),
             font=('Segoe UI Emoji', 10),
             bg=theme.get("warning", "#ffc107"),
             fg='#000000',
@@ -239,11 +268,11 @@ class GlossaryDialog:
             pady=8,
             command=self.update_entry
         )
-        update_btn.pack(fill='x', pady=(0, 5))
+        self.update_btn.pack(fill='x', pady=(0, 5))
         
-        delete_btn = tk.Button(
+        self.delete_btn = tk.Button(
             button_frame,
-            text="🗑️ Supprimer",
+            text=_('glossary.buttons.delete'),
             font=('Segoe UI Emoji', 10),
             bg=theme.get("danger", "#dc3545"),
             fg="#000000",
@@ -252,11 +281,11 @@ class GlossaryDialog:
             pady=8,
             command=self.delete_entry
         )
-        delete_btn.pack(fill='x', pady=(0, 5))
+        self.delete_btn.pack(fill='x', pady=(0, 5))
         
-        clear_btn = tk.Button(
+        self.clear_btn = tk.Button(
             button_frame,
-            text="🆕 Nouveau",
+            text=_('glossary.buttons.new'),
             font=('Segoe UI Emoji', 10),
             bg='#6c757d',
             fg='#000000',
@@ -265,7 +294,7 @@ class GlossaryDialog:
             pady=8,
             command=self.clear_fields
         )
-        clear_btn.pack(fill='x')
+        self.clear_btn.pack(fill='x')
         
         # Séparateur
         separator = ttk.Separator(right_frame, orient='horizontal')
@@ -275,9 +304,9 @@ class GlossaryDialog:
         io_frame = tk.Frame(right_frame, bg=theme["bg"])
         io_frame.pack(fill='x', pady=(0, 10))
         
-        export_btn = tk.Button(
+        self.export_btn = tk.Button(
             io_frame,
-            text="📤 Exporter",
+            text=_('glossary.buttons.export'),
             font=('Segoe UI Emoji', 10),
             bg='#17a2b8',
             fg='#000000',
@@ -286,11 +315,11 @@ class GlossaryDialog:
             pady=8,
             command=self.export_glossary
         )
-        export_btn.pack(fill='x', pady=(0, 5))
+        self.export_btn.pack(fill='x', pady=(0, 5))
         
-        import_btn = tk.Button(
+        self.import_btn = tk.Button(
             io_frame,
-            text="📥 Importer",
+            text=_('glossary.buttons.import'),
             font=('Segoe UI Emoji', 10),
             bg='#6f42c1',
             fg='#000000',
@@ -299,11 +328,11 @@ class GlossaryDialog:
             pady=8,
             command=self.import_glossary
         )
-        import_btn.pack(fill='x', pady=(0, 5))
+        self.import_btn.pack(fill='x', pady=(0, 5))
         
-        validate_btn = tk.Button(
+        self.validate_btn = tk.Button(
             io_frame,
-            text="✅ Valider",
+            text=_('glossary.buttons.validate'),
             font=('Segoe UI Emoji', 10),
             bg='#28a745',
             fg='#000000',
@@ -312,29 +341,15 @@ class GlossaryDialog:
             pady=8,
             command=self.validate_glossary
         )
-        validate_btn.pack(fill='x')
+        self.validate_btn.pack(fill='x')
         
         # Boutons de fermeture
         close_frame = tk.Frame(self.dialog, bg=theme["bg"])
         close_frame.pack(fill='x', padx=10, pady=10)
-        
-        # help_btn = tk.Button(
-        #     close_frame,
-        #     text="❓ Aide",
-        #     font=('Segoe UI Emoji', 10),
-        #     bg='#ffc107',
-        #     fg='#000000',
-        #     relief='flat',
-        #     bd=0,
-        #     pady=8,
-        #     padx=15,
-        #     command=self.show_help
-        # )
-        # help_btn.pack(side='left')
-        
-        close_btn = tk.Button(
+               
+        self.close_btn = tk.Button(
             close_frame,
-            text="✅ Fermer",
+            text=_('glossary.buttons.close'),
             font=('Segoe UI Emoji', 10),
             bg=theme["accent"],
             fg="#000000",
@@ -344,7 +359,7 @@ class GlossaryDialog:
             padx=15,
             command=self.on_close
         )
-        close_btn.pack(side='right')
+        self.close_btn.pack(side='right')
     
     def refresh_glossary_list(self):
         """Actualise la liste du glossaire"""
@@ -395,28 +410,27 @@ class GlossaryDialog:
         translation = self.translation_var.get().strip()
         
         if not original or not translation:
-            messagebox.showwarning("⚠️ Champs vides", "Veuillez remplir les deux champs.")
+            messagebox.showwarning("⚠️ Champs vides", _('glossary.messages.empty_fields'))
             return
         
         if glossary_manager.add_entry(original, translation):
-            messagebox.showinfo("✅ Ajouté", f"Entrée ajoutée:\n'{original}' → '{translation}'")
             self.clear_fields()
             self.refresh_glossary_list()
             self.update_stats()
         else:
-            messagebox.showwarning("⚠️ Erreur", "Impossible d'ajouter l'entrée.")
+            messagebox.showwarning("⚠️ Erreur", _('glossary.messages.add_error'))
     
     def update_entry(self):
         """Modifie une entrée existante"""
         if not self.selected_item:
-            messagebox.showwarning("⚠️ Sélection", "Veuillez sélectionner une entrée à modifier.")
+            messagebox.showwarning("⚠️ Sélection", _('glossary.messages.no_selection'))
             return
         
         original = self.original_var.get().strip()
         translation = self.translation_var.get().strip()
         
         if not original or not translation:
-            messagebox.showwarning("⚠️ Champs vides", "Veuillez remplir les deux champs.")
+            messagebox.showwarning("⚠️ Champs vides", _('glossary.messages.empty_fields'))
             return
         
         # Supprimer l'ancienne entrée
@@ -424,27 +438,25 @@ class GlossaryDialog:
         
         # Ajouter la nouvelle
         if glossary_manager.add_entry(original, translation):
-            messagebox.showinfo("✅ Modifié", f"Entrée modifiée:\n'{original}' → '{translation}'")
             self.clear_fields()
             self.refresh_glossary_list()
             self.update_stats()
         else:
-            messagebox.showwarning("⚠️ Erreur", "Impossible de modifier l'entrée.")
+            messagebox.showwarning("⚠️ Erreur", _('glossary.messages.modify_error'))
     
     def delete_entry(self):
         """Supprime une entrée"""
         if not self.selected_item:
-            messagebox.showwarning("⚠️ Sélection", "Veuillez sélectionner une entrée à supprimer.")
+            messagebox.showwarning("⚠️ Sélection", _('glossary.messages.no_selection_delete'))
             return
         
         result = messagebox.askyesno(
             "🗑️ Confirmer la suppression",
-            f"Voulez-vous vraiment supprimer cette entrée ?\n\n'{self.selected_item}' → '{self.translation_var.get()}'"
+            _('glossary.messages.confirm_delete', original=self.selected_item, translation=self.translation_var.get())
         )
         
         if result:
             if glossary_manager.remove_entry(self.selected_item):
-                messagebox.showinfo("✅ Supprimé", "Entrée supprimée avec succès.")
                 self.clear_fields()
                 self.refresh_glossary_list()
                 self.update_stats()
@@ -469,10 +481,10 @@ class GlossaryDialog:
         
         if file_path:
             if glossary_manager.export_glossary(file_path):
-                messagebox.showinfo("✅ Export réussi", f"Glossaire exporté vers:\n{file_path}")
+                pass
             else:
-                messagebox.showerror("❌ Erreur", "Impossible d'exporter le glossaire.")
-    
+                messagebox.showerror("❌ Erreur", _('glossary.messages.export_error'))
+
     def import_glossary(self):
         """Importe un glossaire"""
         file_path = filedialog.askopenfilename(
@@ -486,75 +498,117 @@ class GlossaryDialog:
         if file_path:
             merge = messagebox.askyesno(
                 "📥 Mode d'importation",
-                "Voulez-vous fusionner avec le glossaire existant ?\n\n"
-                "• Oui = Ajouter aux entrées existantes\n"
-                "• Non = Remplacer complètement le glossaire"
+                _('glossary.messages.import_mode')
             )
             
-            if glossary_manager.import_glossary(file_path, merge):
-                messagebox.showinfo("✅ Import réussi", "Glossaire importé avec succès.")
+            if glossary_manager.import_glossary(file_path, merge):              
                 self.refresh_glossary_list()
                 self.update_stats()
             else:
-                messagebox.showerror("❌ Erreur", "Impossible d'importer le glossaire.")
-    
+                messagebox.showerror("❌ Erreur", _('glossary.messages.import_error'))
+
     def validate_glossary(self):
         """Valide le glossaire"""
         issues = glossary_manager.validate_glossary()
         
         if not issues:
-            messagebox.showinfo("✅ Validation réussie", "Le glossaire ne contient aucun problème.")
+            messagebox.showinfo("✅ Validation", _('glossary.messages.validation_success'))
         else:
             issue_text = "\n".join(f"• {issue}" for issue in issues[:10])
             if len(issues) > 10:
                 issue_text += f"\n... et {len(issues) - 10} autres problèmes"
             
             messagebox.showwarning(
-                f"⚠️ {len(issues)} problème(s) détecté(s)",
-                f"Problèmes trouvés:\n\n{issue_text}"
+                _('glossary.messages.validation_issues', count=len(issues)),
+                _('glossary.messages.validation_issues_text', issues=issue_text)
             )
     
     def show_help(self):
         """Affiche l'aide du glossaire"""
-        help_text = """📚 Gestionnaire de Glossaire - Aide
-
-🎯 Objectif:
-Le glossaire permet de traduire automatiquement des termes récurrents comme "Sigh" → "Soupir" dans tous vos projets.
-
-📝 Utilisation:
-1. Ajoutez des entrées: Original → Traduction
-2. Les termes seront automatiquement protégés lors de l'extraction
-3. Ils seront traduits lors de la reconstruction
-
-🔍 Fonctionnalités:
-• Recherche en temps réel
-• Import/Export de glossaires
-• Validation des entrées
-• Protection automatique des termes complets
-
-⚠️ Important:
-• Le glossaire est permanent (non réinitialisable)
-• Seuls les mots complets sont remplacés
-• Les termes plus longs sont traités en premier
-
-💡 Astuces:
-• Utilisez des termes courants (Sigh, Hmm, etc.)
-• Évitez les termes trop génériques
-• Validez régulièrement votre glossaire"""
+        help_text = _('glossary.help.content')
         
-        messagebox.showinfo("❓ Aide - Glossaire", help_text)
+        messagebox.showinfo(_('glossary.help.title'), help_text)
     
     def update_stats(self):
         """Met à jour les statistiques affichées"""
-        # Trouver et mettre à jour le label de stats
-        # (Implémentation simplifiée - en production, stocker la référence)
-        pass
+        if self.dialog and self.stats_label:
+            stats = glossary_manager.get_statistics()
+            self.stats_label.config(text=f"📊 {stats['total_entries']} entrées")
+    
+    def update_language(self):
+        """Met à jour l'interface quand la langue change"""
+        if not self.dialog:
+            return
+        
+        # Mettre à jour le titre de la fenêtre
+        self.dialog.title(_('glossary.title'))
+        
+        # Mettre à jour les labels
+        if self.title_label:
+            self.title_label.config(text=_('glossary.title'))
+        if self.search_label:
+            self.search_label.config(text=_('glossary.search'))
+        if self.list_label:
+            self.list_label.config(text=_('glossary.entries_title'))
+        if self.edit_label:
+            self.edit_label.config(text=_('glossary.edit_title'))
+        if self.original_label:
+            self.original_label.config(text=_('glossary.original_label'))
+        if self.translation_label:
+            self.translation_label.config(text=_('glossary.translation_label'))
+        
+        # Mettre à jour les en-têtes du treeview
+        self.tree.heading('original', text=_('glossary.original_label'))
+        self.tree.heading('translation', text=_('glossary.translation_label'))
+        
+        # Mettre à jour les boutons
+        if self.add_btn:
+            new_text = _('glossary.buttons.add')
+            self.add_btn.config(text=new_text)
+        if self.update_btn:
+            new_text = _('glossary.buttons.modify')
+            self.update_btn.config(text=new_text)
+        if self.delete_btn:
+            new_text = _('glossary.buttons.delete')
+            self.delete_btn.config(text=new_text)
+        if self.clear_btn:
+            new_text = _('glossary.buttons.new')
+            self.clear_btn.config(text=new_text)
+        if self.export_btn:
+            new_text = _('glossary.buttons.export')
+            self.export_btn.config(text=new_text)
+        if self.import_btn:
+            new_text = _('glossary.buttons.import')
+            self.import_btn.config(text=new_text)
+        if self.validate_btn:
+            new_text = _('glossary.buttons.validate')
+            self.validate_btn.config(text=new_text)
+        if self.close_btn:
+            new_text = _('glossary.buttons.close')
+            self.close_btn.config(text=new_text)
+        
+        # Mettre à jour les statistiques
+        self.update_stats()
     
     def on_close(self):
         """Gestionnaire de fermeture"""
-        self.dialog.destroy()
+        self._safe_destroy()
+        
+        # Nettoyer la référence dans l'application principale
+        if self.main_app and hasattr(self.main_app, 'glossary_dialog'):
+            self.main_app.glossary_dialog = None
+    
+    def _safe_destroy(self):
+        """Destruction sécurisée du dialogue si l'objet n'est pas None"""
+        if self.dialog is not None:
+            try:
+                if self.dialog.winfo_exists():
+                    self.dialog.destroy()
+            except Exception:
+                pass
+            self.dialog = None
 
-def show_glossary_manager(parent):
+def show_glossary_manager(parent, main_app=None):
     """Affiche le gestionnaire de glossaire"""
-    dialog = GlossaryDialog(parent)
+    dialog = GlossaryDialog(parent, main_app)
     dialog.show()

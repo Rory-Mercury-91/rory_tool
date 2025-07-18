@@ -1,6 +1,6 @@
 # core/reconstruction.py
 # Reconstruction Functions Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module de reconstruction des fichiers traduits
@@ -15,13 +15,14 @@ from utils.logging import log_message
 from core.extraction import get_file_base_name
 
 class FileReconstructor:
-    """Classe principale pour la reconstruction des fichiers"""
+    """Classe principale pour la reconstruction des fichiers (mode simple ou avancé)"""
     
-    def __init__(self):
+    def __init__(self, use_glossary=False, use_ellipsis=False):
         self.file_content = []
         self.original_path = None
         self.reconstruction_time = 0
-        
+        self.use_glossary = use_glossary
+        self.use_ellipsis = use_ellipsis
         # Données de reconstruction
         self.mapping = {}
         self.asterix_mapping = {}
@@ -32,6 +33,10 @@ class FileReconstructor:
         self.translations = []
         self.asterix_translations = []
         self.empty_translations = []
+        # Attributs avancés
+        self.glossary_mapping = {}  # mapping du glossaire
+        self.ellipsis_mapping = {}  # mapping des points de suspension
+        self.glossary_translations = []
     
     def load_file_content(self, file_content, original_path):
         """Charge le contenu avec extraction du nom de jeu"""
@@ -67,6 +72,9 @@ class FileReconstructor:
         self.asterix_translations.clear()
         self.empty_translations.clear()
         self.reconstruction_time = 0
+        self.glossary_mapping.clear()
+        self.ellipsis_mapping.clear()
+        self.glossary_translations.clear()
     
     def reconstruct_file(self, save_mode='new_file'):
         """
@@ -106,7 +114,7 @@ class FileReconstructor:
                 'save_mode': save_mode
             }
             
-            log_message("INFO", f"Reconstruction réussie en {self.reconstruction_time:.2f}s")
+            log_message("INFO", f"Reconstruction {'avancée' if self.use_glossary or self.use_ellipsis else 'simple'} réussie en {self.reconstruction_time:.2f}s")
             return result
             
         except Exception as e:
@@ -163,6 +171,33 @@ class FileReconstructor:
                         placeholder, empty = line.strip().split(" => ", 1)
                         self.empty_mapping[placeholder] = empty
 
+        # Avancé : mapping glossaire
+        if self.use_glossary:
+            glossary_file = os.path.join(mapping_folder, f"{file_base}_glossary_mapping.txt")
+            if os.path.exists(glossary_file):
+                with open(glossary_file, "r", encoding="utf-8") as gmf:
+                    for line in gmf:
+                        if " => " in line:
+                            parts = line.strip().split(" => ")
+                            if len(parts) >= 3:
+                                placeholder = parts[0]
+                                original = parts[1]
+                                translation = parts[2]
+                                self.glossary_mapping[placeholder] = {
+                                    'original': original,
+                                    'translation': translation
+                                }
+
+        # Avancé : mapping ellipsis
+        if self.use_ellipsis:
+            ellipsis_file = os.path.join(mapping_folder, f"{file_base}_ellipsis_mapping.txt")
+            if os.path.exists(ellipsis_file):
+                with open(ellipsis_file, "r", encoding="utf-8") as ellf:
+                    for line in ellf:
+                        if " => " in line:
+                            placeholder, replacement = line.strip().split(" => ", 1)
+                            self.ellipsis_mapping[placeholder] = replacement
+
         # Charger les positions et données
         with open(positions_file, "r", encoding="utf-8") as pf:
             position_data = json.load(pf)
@@ -216,6 +251,18 @@ class FileReconstructor:
         else:
             self.empty_translations = []
 
+        # Avancé : glossaire
+        if self.use_glossary:
+            glossary_trans_path = os.path.join(translate_folder, f"{file_base}_glossary.txt")
+            if os.path.exists(glossary_trans_path):
+                with open(glossary_trans_path, "r", encoding="utf-8") as gf:
+                    for line in gf:
+                        line = line.rstrip("\n")
+                        if not line.startswith('#') and line.strip():
+                            self.glossary_translations.append(line)
+            else:
+                self.glossary_translations = []
+
         log_message("INFO", f"Traductions chargées depuis {translate_folder}")
     
     def _rebuild_content(self):
@@ -234,6 +281,20 @@ class FileReconstructor:
                     translated_asterix = f"*{restored_asterix}*"
                     asterix_trans_mapping[placeholder] = translated_asterix
         
+        # Avancé : mapping glossaire
+        glossary_trans_mapping = {}
+        if self.use_glossary and self.glossary_translations and self.glossary_mapping:
+            placeholder_list = list(self.glossary_mapping.keys())
+            for i, placeholder in enumerate(placeholder_list):
+                if i < len(self.glossary_translations):
+                    glossary_trans_mapping[placeholder] = self.glossary_translations[i]
+
+        # Avancé : mapping ellipsis
+        ellipsis_trans_mapping = {}
+        if self.use_ellipsis:
+            for placeholder, replacement in self.ellipsis_mapping.items():
+                ellipsis_trans_mapping[placeholder] = replacement
+
         # CORRECTION PRINCIPALE : Créer un mapping inverse pour restaurer les placeholders
         restore_mapping = {}
         
@@ -298,6 +359,14 @@ class FileReconstructor:
                             for asterix_ph, translated_asterix in asterix_trans_mapping.items():
                                 translation = translation.replace(asterix_ph, translated_asterix)
                                 
+                            # Restaurer les traductions du glossaire
+                            for glossary_ph, glossary_translation in glossary_trans_mapping.items():
+                                translation = translation.replace(glossary_ph, glossary_translation)
+
+                            # Restaurer les points de suspension
+                            for ellipsis_ph, ellipsis_replacement in ellipsis_trans_mapping.items():
+                                translation = translation.replace(ellipsis_ph, ellipsis_replacement)
+                                
                             line_translations.append(translation)
                         else:
                             line_translations.append("")  # Traduction manquante
@@ -342,6 +411,14 @@ class FileReconstructor:
                     if placeholder.startswith("(ESC"):
                         current_line = current_line.replace(placeholder, original)
                 
+                # Restaurer les traductions du glossaire
+                for glossary_ph, glossary_translation in glossary_trans_mapping.items():
+                    current_line = current_line.replace(glossary_ph, glossary_translation)
+
+                # Restaurer les points de suspension
+                for ellipsis_ph, ellipsis_replacement in ellipsis_trans_mapping.items():
+                    current_line = current_line.replace(ellipsis_ph, ellipsis_replacement)
+
                 output_lines.append(current_line)
         
         return output_lines
@@ -366,41 +443,42 @@ class FileReconstructor:
         """Sauvegarde le fichier reconstruit"""
         # Déterminer le chemin de sauvegarde
         if save_mode == 'overwrite':
+            if not self.original_path or not isinstance(self.original_path, str):
+                raise ValueError("Le chemin du fichier original (original_path) n'est pas défini ou n'est pas une chaîne de caractères.")
             save_path = self.original_path
         else:  # new_file
+            if not self.original_path or not isinstance(self.original_path, str):
+                raise ValueError("Le chemin du fichier original (original_path) n'est pas défini ou n'est pas une chaîne de caractères.")
+            if not self.original_path.endswith(".rpy"):
+                raise ValueError("Le fichier original n'a pas l'extension .rpy")
             save_path = self.original_path.replace(".rpy", "_translated.rpy")
-        
         # Sauvegarder le fichier traduit
         with open(save_path, "w", encoding="utf-8", newline='') as wf:
             wf.writelines(content)
-        
         # Si mode nouveau fichier, commenter l'original
         if save_mode == 'new_file':
             success = self._comment_original_file()
             if not success:
                 log_message("WARNING", "Impossible de commenter le fichier original")
-        
         log_message("INFO", f"Fichier reconstruit sauvegardé: {save_path}")
         return save_path
     
     def _comment_original_file(self):
         """Commente toutes les lignes du fichier original"""
+        if not isinstance(self.original_path, str) or not self.original_path:
+            log_message("ERREUR", "Le chemin du fichier original (original_path) n'est pas défini ou n'est pas une chaîne de caractères.")
+            return False
         try:
             with open(self.original_path, 'r', encoding='utf-8') as f:
                 original_lines = f.readlines()
-            
             commented_lines = []
             for line in original_lines:
-                # Si la ligne n'est pas vide, la commenter
                 if line.strip():
                     commented_lines.append(f"# {line}")
                 else:
                     commented_lines.append(line)
-            
-            # Sauvegarder le fichier commenté
             with open(self.original_path, 'w', encoding='utf-8', newline='') as f:
                 f.writelines(commented_lines)
-            
             return True
         except Exception as e:
             log_message("ERREUR", f"Impossible de commenter le fichier original: {str(e)}", e)
@@ -423,7 +501,9 @@ class FileReconstructor:
             os.path.join(mapping_folder, f"{file_base}_mapping.txt"),
             os.path.join(mapping_folder, f"{file_base}_positions.json"),
             os.path.join(mapping_folder, f"{file_base}_asterix_mapping.txt"),
-            os.path.join(mapping_folder, f"{file_base}_empty_mapping.txt")
+            os.path.join(mapping_folder, f"{file_base}_empty_mapping.txt"),
+            os.path.join(mapping_folder, f"{file_base}_glossary_mapping.txt"),
+            os.path.join(mapping_folder, f"{file_base}_ellipsis_mapping.txt")
         ]
         
         cleaned_count = 0
@@ -478,18 +558,16 @@ def validate_translations(original_count, translation_count, asterix_count=0, em
     return validation_result
 
 # Fonction utilitaire pour compatibilité
-def reconstruire_fichier(file_content, original_path, save_mode='new_file'):
+def reconstruire_fichier(file_content, original_path, save_mode='new_file', use_glossary=False, use_ellipsis=False):
     """
-    Fonction de reconstruction compatible avec l'ancienne interface
-    
-    Args:
-        file_content (list): Contenu du fichier original
-        original_path (str): Chemin du fichier original
-        save_mode (str): Mode de sauvegarde
-        
-    Returns:
-        dict: Résultats de la reconstruction
+    Fonction de reconstruction compatible avec l'ancienne interface (mode simple ou avancé)
     """
-    reconstructor = FileReconstructor()
+    reconstructor = FileReconstructor(use_glossary=use_glossary, use_ellipsis=use_ellipsis)
     reconstructor.load_file_content(file_content, original_path)
     return reconstructor.reconstruct_file(save_mode)
+
+def reconstruire_fichier_enhanced(file_content, original_path, save_mode='new_file'):
+    """
+    Fonction de reconstruction avancée (glossaire et ellipsis)
+    """
+    return reconstruire_fichier(file_content, original_path, save_mode, use_glossary=True, use_ellipsis=True)

@@ -1,6 +1,6 @@
 # ui/backup_manager.py
 # Backup Management Interface
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module d'interface pour la gestion des sauvegardes
@@ -14,13 +14,14 @@ from core.validation import BackupManager
 from utils.logging import log_message, extract_game_name
 from utils.constants import FOLDERS
 from ui.themes import theme_manager
+from typing import cast
 
 class BackupDialog:
     """Dialogue de gestion des sauvegardes"""
     
-    def __init__(self, parent, filepath=None):
+    def __init__(self, parent, filepath: str | None = None):
         self.parent = parent
-        self.filepath = filepath
+        self.filepath: str = filepath if isinstance(filepath, str) else (str(filepath) if filepath is not None else "")
         self.dialog = None
         self.backups = []
         self.backup_manager = BackupManager()
@@ -141,7 +142,7 @@ class BackupDialog:
             bd=0,
             pady=8,
             padx=15,
-            command=self.dialog.destroy
+            command=(lambda: self.dialog.destroy() if self.dialog is not None else None)
         )
         close_btn.pack(side='right')
         
@@ -149,7 +150,8 @@ class BackupDialog:
         def on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         
-        self.dialog.bind("<MouseWheel>", on_mousewheel)
+        if self.dialog is not None:
+            self.dialog.bind("<MouseWheel>", on_mousewheel)
     
     def _load_backups(self):
         """✅ CORRECTION : Charge la liste des sauvegardes depuis le nouveau système"""
@@ -235,7 +237,8 @@ class BackupDialog:
         )
         loading_label.pack(pady=50)
         
-        self.dialog.update()
+        if self.dialog is not None:
+            self.dialog.update()
         
         # Recharger
         self._load_backups()
@@ -480,7 +483,7 @@ class BackupDialog:
                         )
                 
                 # Fermer le dialogue et notifier le parent de recharger le fichier
-                self.dialog.destroy()
+                self._safe_destroy()
                 
                 # Notifier le parent de recharger le fichier (si possible)
                 if hasattr(self.parent, 'charger_fichier'):
@@ -542,6 +545,16 @@ class BackupDialog:
         except Exception as e:
             log_message("ERREUR", f"Erreur lors de la suppression de {backup['path']}", e)
             messagebox.showerror("❌ Erreur", f"Erreur lors de la suppression:\n{str(e)}")
+
+    def _safe_destroy(self):
+        """Destruction sécurisée du dialogue si l'objet n'est pas None"""
+        if self.dialog is not None:
+            try:
+                if self.dialog.winfo_exists():
+                    self.dialog.destroy()
+            except Exception:
+                pass
+            self.dialog = None
 
 
 # Fonction utilitaire pour l'interface principale

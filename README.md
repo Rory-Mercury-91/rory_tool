@@ -1,49 +1,56 @@
-# 🎮 Traducteur Ren'Py Pro
+# 🎮 RenExtract
 
 [![Version](https://img.shields.io/github/v/release/Rory-Mercury-91/rory_tool?style=for-the-badge)](https://github.com/Rory-Mercury-91/rory_tool/releases)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python)](https://python.org)
 [![License](https://img.shields.io/github/license/Rory-Mercury-91/rory_tool?style=for-the-badge)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/Rory-Mercury-91/rory_tool/total?style=for-the-badge)](https://github.com/Rory-Mercury-91/rory_tool/releases)
 
-**Outil de traduction avancé pour les scripts Ren'Py avec interface moderne et fonctionnalités intelligentes.**
+**Outil de traduction avancé pour les scripts Ren'Py avec interface moderne, multilingue et fonctionnalités intelligentes.**
 
 ---
 
 ## ✨ Fonctionnalités principales
 
+### 🌍 **Internationalisation dynamique (i18n)**
+- Interface et guides disponibles en **français, anglais et allemand**
+- Changement de langue **en temps réel** sur toute l'interface (boutons, menus, fenêtres d'aide, glossaire...)
+- Traductions allemandes complètes et suppression de l'espagnol
+
+### 🎨 **Interface moderne et responsive**
+- **Boutons à taille fixe** : affichage uniforme quelle que soit la langue ou la longueur du texte
+- **Émojis universels** pour une compatibilité maximale (Windows, Linux, WSL, etc.)
+- **Thèmes sombre/clair** vraiment distincts, bascule instantanée sur tous les widgets
+- **Mise à jour dynamique** de tous les textes lors du changement de langue ou de thème
+- **Accessibilité améliorée** : textes lisibles, raccourcis clavier, navigation optimisée
+
+### 📚 **Gestionnaire de glossaire avancé**
+- Ajout, modification, validation, import/export, recherche en temps réel
+- Validation intelligente des entrées et persistance du glossaire
+- Glossaire et ses fenêtres entièrement traduits
+
+### 💡 **Centre d'aide et guides multilingues**
+- Fenêtres d'aide, tutoriels et glossaire traduits et adaptés à la langue choisie
+- Navigation non-bloquante, guides contextuels
+
+### 🔔 **Notifications intelligentes**
+- Système de notifications toast, statuts, et popups réduites au strict nécessaire
+- Messages d'information, de succès et d'erreur traduits
+
 ### 🚀 **Extraction intelligente**
-- **Protection automatique** des codes Ren'Py (`{b}`, `[player_name]`, `\n`, etc.)
-- **Séparation intelligente** : textes principaux, expressions `*entre astérisques*`, textes vides
-- **Structure organisée** par jeu : `temporaires/[NomDuJeu]/fichiers_a_traduire/`
-
-### 📚 **Système de glossaire permanent**
-- **Traduction automatique** des termes récurrents (ex: "Sigh" → "Soupir")
-- **Interface complète** : ajout, modification, recherche, validation
-- **Import/Export** pour partager vos glossaires
-- **Protection automatique** lors de l'extraction
-
-### 🎯 **Modes d'entrée flexibles**
-- **Drag & Drop** : Glissez vos fichiers `.rpy` directement
-- **Mode Ctrl+V** : Collez du contenu Ren'Py depuis le presse-papier
-- **Mode dossier** : Traitement en lot de plusieurs fichiers
-- **Fallback intelligent** si Drag & Drop non disponible
+- Protection automatique des codes Ren'Py (`{b}`, `[player_name]`, `\n`, etc.)
+- Séparation intelligente : textes principaux, expressions `*entre astérisques*`, textes vides
+- Structure organisée par jeu : `temporaires/[NomDuJeu]/fichiers_a_traduire/`
 
 ### ✅ **Validation avancée**
-- **Contrôle de cohérence** OLD/NEW avec rapports détaillés
-- **Détection automatique** des placeholders malformés
-- **Rapports d'erreurs** dans `avertissements/[NomDuJeu]/`
-- **Validation désactivable** pour plus de rapidité
+- Contrôle de cohérence OLD/NEW avec rapports détaillés
+- Détection automatique des placeholders malformés
+- Rapports d'erreurs dans `avertissements/[NomDuJeu]/`
+- Validation désactivable pour plus de rapidité
 
 ### 🛡️ **Sécurité et sauvegarde**
-- **Sauvegardes automatiques** avant chaque traitement
-- **Gestionnaire de sauvegardes** intégré avec restauration en un clic
-- **Structure organisée** : `sauvegardes/[NomDuJeu]/`
-
-### 🎨 **Interface moderne**
-- **Thèmes sombre/clair** vraiment différents
-- **Interface adaptative** avec messages contextuels
-- **Statistiques temps réel** et compteurs de performance
-- **Guide intégré** non-bloquant avec centre d'aide
+- Sauvegardes automatiques avant chaque traitement
+- Gestionnaire de sauvegardes intégré avec restauration en un clic
+- Structure organisée : `sauvegardes/[NomDuJeu]/`
 
 ---
 
@@ -53,24 +60,24 @@
 
 Téléchargez la dernière version depuis les [**Releases**](https://github.com/Rory-Mercury-91/rory_tool/releases/latest) :
 
-- **Windows** : `TraducteurRenPyPro-v2.4.4-Windows.zip`
-- **Linux** : `TraducteurRenPyPro-v2.4.4-Linux.tar.gz`
+- **Windows** : `RenExtract-v2.5.0-Windows.zip`
+- **Linux** : `RenExtract-v2.5.0-Linux.tar.gz`
 
 ### 🚀 **Installation Windows**
 1. Téléchargez le fichier `.zip`
 2. Extraire l'archive
-3. Double-cliquez sur `TraducteurRenPyPro.exe`
+3. Double-cliquez sur `RenExtract.exe`
 
 ### 🐧 **Installation Linux**
 ```bash
 # Télécharger et extraire
-tar -xzf TraducteurRenPyPro-v2.4.4-Linux.tar.gz
+tar -xzf RenExtract-v2.5.0-Linux.tar.gz
 
 # Rendre exécutable
-chmod +x TraducteurRenPyPro
+chmod +x RenExtract
 
 # Lancer
-./TraducteurRenPyPro
+./RenExtract
 ```
 
 ### 🐍 **Installation depuis le code source**
@@ -121,9 +128,9 @@ temporaires/[NomDuJeu]/
 ### **Configuration initiale**
 1. Cliquez sur "📚 Glossaire" dans la barre d'outils
 2. Ajoutez vos paires `Original → Traduction` :
-   - `"Sigh"` → `"Soupir"`
-   - `"Hmm"` → `"Hmm"`
-   - `"Yeah"` → `"Ouais"`
+   - "Sigh" → "Soupir"
+   - "Hmm" → "Hmm"
+   - "Yeah" → "Ouais"
 
 ### **Utilisation automatique**
 - Les termes sont **automatiquement protégés** lors de l'extraction
@@ -135,6 +142,7 @@ temporaires/[NomDuJeu]/
 - **Recherche en temps réel** dans les entrées
 - **Validation** pour détecter les problèmes
 - **Persistance** : survit aux réinitialisations
+- **Interface et messages du glossaire traduits**
 
 ---
 
@@ -145,6 +153,7 @@ temporaires/[NomDuJeu]/
 - **✅ Valid ON/OFF** : Activation/désactivation de la validation
 - **🌙/☀️** : Basculement thème sombre/clair
 - **🎯 D&D ↔ 📋 Ctrl+V** : Mode d'entrée (avec fallback intelligent)
+- **🇫🇷/🇬🇧/🇩🇪** : Changement de langue instantané
 
 ### **Raccourcis utiles**
 - **Double-clic** sur la zone vide → Ouvrir un fichier
@@ -154,25 +163,29 @@ temporaires/[NomDuJeu]/
 
 ---
 
-## 🆕 Nouveautés v2.4.4
+## 🆕 Nouveautés v2.5.0
 
-### **Architecture refactorisée**
-- **Modules enhanced** pour extraction et reconstruction
-- **Structure organisée** par jeu avec dossiers dédiés
-- **Suppression** de la protection des points de suspension
-- **Performances optimisées** pour gros fichiers
+### **Internationalisation et interface**
+- **Suppression de l'espagnol** : seules les langues français, anglais et allemand sont supportées
+- **Traductions allemandes complètes**
+- **Changement de langue dynamique** sur toute l'interface (boutons, guides, glossaire...)
+- **Boutons à taille fixe** pour tous les textes, même en allemand
+- **Correction de tous les caractères spéciaux/émojis**
+- **Thèmes sombre/clair** instantanés et appliqués à toutes les fenêtres
+- **Refonte du système de notifications** (toast, statuts, popups réduites)
+- **Robustesse accrue** : interface plus stable, gestion dynamique des textes et thèmes
 
-### **Nouvelles fonctionnalités**
-- **Système de glossaire** permanent et intelligent
-- **Validation avancée** avec rapports détaillés
-- **Interface améliorée** avec thèmes vraiment différents
-- **Modes d'entrée** multiples avec fallback
+### **Fonctionnalités avancées**
+- **Gestionnaire de glossaire** enrichi et multilingue
+- **Guides et centre d'aide** traduits et adaptatifs
+- **Notifications intelligentes** et messages contextuels
+- **Accessibilité et ergonomie** renforcées
 
-### **Améliorations techniques**
-- **Pipeline de build** automatisé avec GitHub Actions
-- **Exécutables autonomes** Windows et Linux
-- **Gestion d'erreurs** renforcée
-- **Documentation** complète intégrée
+### **Technique**
+- **Performances optimisées**
+- **Pipeline de build** automatisé
+- **Exécutables Windows et Linux**
+- **Documentation** enrichie
 
 ---
 
@@ -260,7 +273,7 @@ Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus
 
 ## ⭐ Remerciements
 
-Merci à tous ceux qui utilisent et contribuent au **Traducteur Ren'Py Pro** !
+Merci à tous ceux qui utilisent et contribuent au **RenExtract** !
 
 Si ce projet vous aide, n'hésitez pas à lui donner une ⭐ !
 

@@ -1,6 +1,6 @@
 # utils/constants.py - STRUCTURE CORRIGÉE
 # Constants and Configuration Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module contenant toutes les constantes de l'application
@@ -9,7 +9,7 @@ Module contenant toutes les constantes de l'application
 import os
 
 # Version de l'application
-VERSION = "2.4.4"
+VERSION = "2.5.0"
 
 # ✅ CORRECTION : Dossier config renommé
 FOLDERS = {
@@ -23,9 +23,9 @@ FOLDERS = {
 THEMES = {
     "dark": {
         # 🌙 MODE SOMBRE - Vraiment sombre
-        "bg": "#1e1e1e",              # Gris très foncé (VS Code style)
+        "bg": "#252525",              # Gris plus foncé uniforme
         "fg": "#ffffff",              # Blanc pur
-        "frame_bg": "#2d2d2d",        # Gris foncé pour les frames
+        "frame_bg": "#252525",        # Gris plus foncé pour les frames
         "button_bg": "#3c3c3c",       # Gris moyen pour boutons
         "entry_bg": "#252526",        # Gris très foncé pour zone de texte
         "entry_fg": "#cccccc",        # Gris clair pour texte
@@ -38,9 +38,9 @@ THEMES = {
     },
     "light": {
         # ☀️ MODE CLAIR - Vraiment clair
-        "bg": "#ffffff",              # Blanc pur
+        "bg": "#f0f0f0",              # Gris un peu plus foncé uniforme
         "fg": "#212121",              # Gris très foncé
-        "frame_bg": "#f5f5f5",        # Gris très clair pour frames
+        "frame_bg": "#f0f0f0",        # Gris un peu plus foncé pour frames
         "button_bg": "#e0e0e0",       # Gris clair pour boutons
         "entry_bg": "#ffffff",        # Blanc pur pour zone de texte
         "entry_fg": "#212121",        # Noir pour texte
@@ -55,7 +55,7 @@ THEMES = {
 
 # Configuration des fenêtres
 WINDOW_CONFIG = {
-    "title": f"🎮 Traducteur Ren'Py Pro v{VERSION}",
+    "title": f"🎮 RenExtract v{VERSION}",
     "geometry": "1300x800",
     "min_size": (1300, 800)
 }
@@ -102,13 +102,89 @@ MESSAGES = {
     "reconstruction_in_progress": "🔧 Reconstruction en cours..."
 }
 
-# Configuration par défaut
+# Ajout dans DEFAULT_CONFIG :
 DEFAULT_CONFIG = {
     "last_directory": "",
     "auto_open_files": True,
     "dark_mode": True,
     "validation_enabled": True,
+    "language": "fr",  # ✅ NOUVEAU : Langue par défaut
     "version": VERSION
+}
+
+# ✅ NOUVEAU : Configuration des notifications
+NOTIFICATION_CONFIG = {
+    "toast_duration": 3000,      # Durée des toasts en ms
+    "reduce_popups": True,       # Réduire les popups automatiquement
+    "smart_notifications": True  # Utiliser le système intelligent
+}
+
+# ✅ NOUVEAU : Messages critiques qui DOIVENT rester en popup
+CRITICAL_POPUPS = [
+    "fermer_application",        # Confirmation de fermeture
+    "reinitialiser",            # Réinitialisation avec données
+    "nettoyer_page",            # Nettoyage avec temps de session
+    "validation_errors",        # Erreurs de validation importantes
+    "file_corruption",          # Corruption de fichier
+    "backup_restore"            # Restauration de sauvegarde
+]
+
+# ✅ NOUVEAU : Classification des messages
+MESSAGE_PRIORITIES = {
+    # Messages d'état (barre de statut uniquement)
+    "STATUS_ONLY": [
+        "extraction_progress",
+        "reconstruction_progress", 
+        "file_loading",
+        "ready_state"
+    ],
+    
+    # Notifications discrètes (toast)
+    "TOAST": [
+        "auto_open_toggle",
+        "validation_toggle",
+        "language_change",
+        "theme_change",
+        "operation_success",
+        "minor_warnings"
+    ],
+    
+    # Confirmations importantes (popup modal)
+    "MODAL": [
+        "quit_confirmation",
+        "reset_with_data",
+        "clean_with_data", 
+        "critical_errors",
+        "file_conflicts"
+    ]
+}
+
+# ✅ NOUVEAU : Réduction intelligente des popups
+POPUP_REDUCTION_RULES = {
+    # Remplacer les popups d'information par des toasts
+    "info_to_toast": [
+        "extraction_complete",
+        "reconstruction_complete",
+        "auto_open_status",
+        "validation_status",
+        "glossary_operations"
+    ],
+    
+    # Remplacer les avertissements mineurs par des toasts
+    "warning_to_toast": [
+        "drag_drop_unavailable",
+        "file_format_warning",
+        "minor_validation_issues"
+    ],
+    
+    # Garder les popups critiques
+    "keep_modal": [
+        "quit_application",
+        "data_loss_warning", 
+        "file_corruption",
+        "critical_validation_errors",
+        "backup_operations"
+    ]
 }
 
 # ✅ CORRECTION : Fichiers dans dossier_configs

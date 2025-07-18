@@ -1,4 +1,4 @@
-# Requirements pour le Traducteur Ren'Py Pro v2.4.4
+# Requirements pour le RenExtract v2.5.0
 # Dépendances principales
 
 # Interface graphique et Drag & Drop

@@ -1,6 +1,6 @@
 # core/file_manager.py
 # File Management Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module de gestion des fichiers et opérations système
@@ -14,7 +14,7 @@ from utils.logging import log_message, anonymize_path
 from utils.config import config_manager
 
 class FileManager:
-    """Gestionnaire de fichiers pour le Traducteur Ren'Py Pro"""
+    """Gestionnaire de fichiers pour le RenExtract"""
     
     def __init__(self):
         self.opened_files = set()

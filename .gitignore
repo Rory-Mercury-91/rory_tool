@@ -1,6 +1,6 @@
 # Créer le .gitignore
 cat > .gitignore << 'EOF'
-# Fichiers temporaires du Traducteur Ren'Py Pro
+# Fichiers temporaires du RenExtract
 dossier_configs/
 temporaires/
 sauvegardes/

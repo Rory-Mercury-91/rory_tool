@@ -1,6 +1,6 @@
 # core/validation.py
 # Validation and Security Module
-# Created for Traducteur Ren'Py Pro v2.4.4
+# Created for RenExtract v2.5.0
 
 """
 Module de validation des fichiers et de sécurité
@@ -704,35 +704,73 @@ def create_safety_backup(filepath):
             'error': str(e)
         }
 
-
-def validate_before_reconstruction(file_base, extracted_count, asterix_count=0, empty_count=0):
-    """✅ CORRECTION : Validation avec nouvelle structure de fichiers"""
+def find_actual_game_folder(file_base):
+    """Trouve le vrai dossier de jeu en cherchant les fichiers traduits"""
     try:
-        # ✅ CORRECTION : Utiliser la structure organisée
-        from utils.logging import extract_game_name
         from utils.constants import FOLDERS
         
-        # Récupérer le nom du jeu depuis le contexte ou utiliser un fallback
-        game_name = "Projet_Inconnu"  # Fallback
+        temp_root = FOLDERS["temp"]
+        if not os.path.exists(temp_root):
+            return None
         
-        # Essayer de récupérer le nom du jeu depuis le contexte global
-        try:
-            # Si on a accès à l'instance principale
-            import main
-            if hasattr(main, 'app') and hasattr(main.app, 'original_path'):
-                game_name = extract_game_name(main.app.original_path)
-        except:
-            pass
+        # Chercher dans tous les sous-dossiers
+        for game_folder in os.listdir(temp_root):
+            game_path = os.path.join(temp_root, game_folder)
+            if os.path.isdir(game_path):
+                # Vérifier si le dossier contient nos fichiers
+                translate_folder = os.path.join(game_path, "fichiers_a_traduire")
+                if os.path.exists(translate_folder):
+                    main_file = os.path.join(translate_folder, f"{file_base}.txt")
+                    if os.path.exists(main_file):
+            
+                        return game_folder
+        
+        return None
+        
+    except Exception as e:
+
+        return None
+
+def validate_before_reconstruction(file_base, extracted_count, asterix_count=0, empty_count=0):
+    """✅ CORRECTION : Validation avec recherche automatique du dossier"""
+    try:
+        from utils.constants import FOLDERS
+        
+        # ✅ CORRECTION : Chercher le vrai dossier de jeu
+        game_name = find_actual_game_folder(file_base)
+        
+        if not game_name:
+            # Fallback vers la méthode originale
+            try:
+                import main
+                if hasattr(main, 'app_instance') and main.app_instance and hasattr(main.app_instance, 'original_path'):
+                    from utils.logging import extract_game_name
+                    game_name = extract_game_name(main.app_instance.original_path)
+                else:
+                    game_name = "Projet_Inconnu"
+            except:
+                game_name = "Projet_Inconnu"
+        
+
         
         temp_root = FOLDERS["temp"]
         translate_folder = os.path.join(temp_root, game_name, "fichiers_a_traduire")
         
+        # Créer la structure si elle n'existe pas
+        if not os.path.exists(translate_folder):
+            os.makedirs(translate_folder, exist_ok=True)
+        
         validator = TranslationValidator()
         
-        # Adapter les chemins pour la nouvelle structure
+        # Construire les chemins
         main_file = os.path.join(translate_folder, f"{file_base}.txt")
         asterix_file = os.path.join(translate_folder, f"{file_base}_asterix.txt") if asterix_count > 0 else None
         empty_file = os.path.join(translate_folder, f"{file_base}_empty.txt") if empty_count > 0 else None
+        
+
+        print(f"  Main: {main_file} (existe: {os.path.exists(main_file)})")
+        print(f"  Asterix: {asterix_file} (existe: {os.path.exists(asterix_file) if asterix_file else 'N/A'})")
+        print(f"  Empty: {empty_file} (existe: {os.path.exists(empty_file) if empty_file else 'N/A'})")
         
         return validator.validate_all_files_with_paths(
             main_file, asterix_file, empty_file,
@@ -740,7 +778,7 @@ def validate_before_reconstruction(file_base, extracted_count, asterix_count=0, 
         )
         
     except Exception as e:
-        log_message("ERREUR", f"Erreur lors de la validation avant reconstruction pour {file_base}", e)
+
         return {
             'overall_valid': False,
             'main_file': {
